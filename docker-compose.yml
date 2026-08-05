@@ -1,0 +1,24 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pos
+      POSTGRES_PASSWORD: pos_dev_password
+      POSTGRES_DB: pos_dev
+      # Keeps businessDate math predictable: DB stores UTC, app converts.
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - '5432:5432'
+    volumes:
+      - pos_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pos -d pos_dev']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pos_pgdata:

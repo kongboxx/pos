@@ -1,0 +1,29 @@
+node_modules/
+dist/
+build/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# env
+.env
+.env.*
+!.env.example
+
+# vite / pwa generated
+dev-dist/
+apps/web/public/sw.js
+apps/web/public/workbox-*.js
+
+# playwright
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# editors / os
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

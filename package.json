@@ -1,0 +1,40 @@
+{
+  "name": "pos",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.18.0",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "build:shared": "pnpm --filter @pos/shared build",
+    "dev": "pnpm build:shared && pnpm -r --parallel dev",
+    "dev:api": "pnpm build:shared && pnpm --filter @pos/api dev",
+    "dev:web": "pnpm build:shared && pnpm --filter @pos/web dev",
+    "dev:agent": "pnpm build:shared && pnpm --filter @pos/print-agent dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm build:shared && pnpm -r typecheck",
+    "test": "pnpm build:shared && pnpm -r test",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:reset": "pnpm --filter @pos/api db:reset",
+    "db:migrate": "pnpm --filter @pos/api db:migrate",
+    "db:deploy": "pnpm --filter @pos/api db:deploy",
+    "db:seed": "pnpm --filter @pos/api db:seed",
+    "db:seed:demo": "pnpm --filter @pos/api db:seed:demo",
+    "db:studio": "pnpm --filter @pos/api db:studio"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0"
+  }
+}

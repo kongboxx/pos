@@ -1,0 +1,1185 @@
+// POS database schema.
+//
+// Non-negotiable rules encoded here (see README "กฎ 10 ข้อ"):
+//  #1 every table carries branchId, even the child rows. Denormalised on
+//     purpose: it makes "scope everything by branch" a single WHERE clause and
+//     makes a cross-branch leak impossible to write by accident.
+//  #2 money is Int satang. There is no Float / Decimal on any money column.
+//  #3 the VAT columns exist from day one, zeroed until registration.
+//  #4 businessDate is a separate Date column from createdAt.
+//  #5 stock is a movement ledger; the balance is derived, never stored.
+//  #6 Order / OrderLine ids are client-generated UUIDs, not autoincrement.
+//  #7 order lines snapshot name, price and cost at the moment of sale.
+//  #8 every void / discount / edit lands in AuditLog.
+//  #9 document numbers come from DocSequence, per branch per year.
+// #10 an order is a long-lived OPEN bill; each line knows if it was fired.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Lets one branch run without tables/kitchen screens (retail) while another
+/// runs the full restaurant flow. Same schema, different modules switched on.
+enum BusinessType {
+  RESTAURANT
+  RETAIL
+}
+
+enum Role {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum StaffStatus {
+  ACTIVE
+  PROBATION
+  LEAVE
+  LEFT
+}
+
+enum Nationality {
+  TH
+  FOREIGN
+}
+
+enum WageType {
+  DAILY
+  MONTHLY
+}
+
+enum OrderStatus {
+  OPEN
+  PAID
+  CANCELLED
+}
+
+enum OrderChannel {
+  DINE_IN
+  TAKEAWAY
+  DELIVERY
+}
+
+/// Who put the line on the bill: a staff terminal, or the customer's phone
+/// via the table QR code (which needs approval before it reaches the kitchen).
+enum OrderLineSource {
+  STAFF
+  QR
+}
+
+enum TicketStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  PROMPTPAY
+}
+
+enum PaidBy {
+  CASH
+  TRANSFER
+}
+
+/// RECEIPT may be issued offline. TAX_INVOICE and CREDIT_NOTE may not.
+enum DocType {
+  RECEIPT
+  TAX_INVOICE
+  CREDIT_NOTE
+}
+
+enum StockMovementType {
+  RECEIVE
+  SALE
+  WASTE
+  TRANSFER
+  COUNT
+}
+
+enum PrintJobType {
+  TEST_RECEIPT
+  RECEIPT
+  KITCHEN_TICKET
+  DRAWER_KICK
+}
+
+enum PrintJobStatus {
+  QUEUED
+  CLAIMED
+  PRINTED
+  FAILED
+  CANCELLED
+}
+
+// ---------------------------------------------------------------------------
+// Branch — the tenant boundary
+// ---------------------------------------------------------------------------
+
+model Branch {
+  id           String       @id @default(uuid())
+  name         String
+  branchCode   String       @unique /// short code used in document numbers, e.g. "HQ"
+  businessType BusinessType @default(RESTAURANT)
+  address      String?
+  phone        String?
+  taxId        String? /// เลขประจำตัวผู้เสียภาษี 13 หลัก
+
+  /// IANA timezone. businessDate is always computed in this zone, never the
+  /// server's zone, so a branch abroad or a server move cannot shift takings.
+  timezone      String @default("Asia/Bangkok")
+  /// Local hour a new business day starts. 4 = a 00:20 bill belongs to yesterday.
+  dayCutoffHour Int    @default(4)
+
+  /// --- VAT (rule #3). All off today, flipped on the day registration lands. ---
+  vatEnabled       Boolean   @default(false)
+  /// Rate in BASIS POINTS as an Int: 700 = 7%. Never a float.
+  vatRateBp        Int       @default(0)
+  /// true = menu prices already include VAT (the usual Thai restaurant setup).
+  priceIncludesVat Boolean   @default(true)
+  /// First date VAT applies. Bills before this stay non-VAT forever.
+  vatEffectiveDate DateTime? @db.Date
+
+  /// Fixed monthly rent, used by the break-even calculation (Step 8).
+  rentPerMonthSatang Int @default(0)
+
+  /// PromptPay id the payment QR is generated from: mobile number, tax id or
+  /// e-wallet id. Stored as typed; parsed and normalised by @pos/shared.
+  /// NULL = the PromptPay button stays disabled at the till.
+  promptPayId String?
+
+  /// The off switch for customer QR ordering (Step 7).
+  ///
+  /// /api/qr/* needs no login — the token on a table sticker is the whole
+  /// credential — so it needs a way to be closed without peeling stickers off
+  /// the furniture. Flipped from จัดการโต๊ะ; the menu still loads when it is
+  /// off, so a customer who scans reads "สั่งผ่าน QR ปิดอยู่" instead of a
+  /// broken page.
+  qrOrderingEnabled Boolean @default(true)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  staff              Staff[]
+  staffDeductions    StaffDeduction[]
+  payrolls           Payroll[]
+  payrollLines       PayrollLine[]
+  diningTables       DiningTable[]
+  tableSessions      TableSession[]
+  menuCategories     MenuCategory[]
+  menuItems          MenuItem[]
+  modifierGroups     ModifierGroup[]
+  modifiers          Modifier[]
+  menuItemGroups     MenuItemGroup[]
+  ingredients        Ingredient[]
+  recipeLines        RecipeLine[]
+  orders             Order[]
+  orderLines         OrderLine[]
+  orderLineModifiers OrderLineModifier[]
+  kitchenTickets     KitchenTicket[]
+  ticketLines        TicketLine[]
+  payments           Payment[]
+  voidLogs           VoidLog[]
+  expenses           Expense[]
+  monthlyCloses      MonthlyClose[]
+  docSequences       DocSequence[]
+  creditNotes        CreditNote[]
+  auditLogs          AuditLog[]
+  stockMovements     StockMovement[]
+  prepBatches        PrepBatch[]
+  shifts             Shift[]
+  printJobs          PrintJob[]
+
+  @@index([isActive])
+  @@map("branches")
+}
+
+// ---------------------------------------------------------------------------
+// Staff & payroll
+// ---------------------------------------------------------------------------
+
+model Staff {
+  id       String @id @default(uuid())
+  branchId String
+
+  fullName String
+  nickname String?
+  position String? /// free text: "กุ๊ก", "แคชเชียร์"
+  role     Role    @default(STAFF)
+
+  /// bcrypt hash of the 4-digit PIN. The PIN itself is never stored or logged.
+  pinHash String
+  phone   String?
+
+  /// --- PIN brute-force protection (Step 2) ---
+  /// A 4-digit PIN is 10,000 combinations. Without a lockout, anyone who can
+  /// reach the API on the shop wifi can walk the whole space in minutes, so
+  /// these two columns are what makes a 4-digit secret defensible at all.
+  /// Reset to 0/null on every successful login.
+  failedPinAttempts Int       @default(0)
+  pinLockedUntil    DateTime?
+  lastLoginAt       DateTime?
+
+  startDate DateTime    @db.Date
+  endDate   DateTime?   @db.Date
+  status    StaffStatus @default(PROBATION)
+
+  /// --- foreign worker documents, with expiry so we can warn 90 days ahead ---
+  nationality      Nationality @default(TH)
+  passportNo       String?
+  passportExpiry   DateTime?   @db.Date
+  workPermitNo     String?
+  workPermitExpiry DateTime?   @db.Date
+
+  wageType       WageType @default(DAILY)
+  /// Wage per day (DAILY) or per month (MONTHLY), in satang.
+  wageRateSatang Int      @default(0)
+
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch              Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  deductions          StaffDeduction[]
+  payrollLines        PayrollLine[]
+  auditLogs           AuditLog[]
+  voidsRequested      VoidLog[]        @relation("VoidRequestedBy")
+  voidsApproved       VoidLog[]        @relation("VoidApprovedBy")
+  prepBatches         PrepBatch[]
+  shifts              Shift[]
+  creditNotesIssued   CreditNote[]     @relation("CreditNoteIssuedBy")
+  creditNotesApproved CreditNote[]     @relation("CreditNoteApprovedBy")
+
+  /// NOT a "no two staff share a PIN" guarantee: bcrypt salts every hash, so
+  /// two people with PIN 1234 produce different strings and both insert fine.
+  /// It only stops the identical hash being stored twice (a copy-pasted seed).
+  /// That is acceptable because login picks the staff member FIRST and then
+  /// checks one PIN — duplicates cannot log you in as someone else. A real
+  /// "this PIN is taken" check belongs in staff management (Step 9).
+  @@unique([branchId, pinHash])
+  @@index([branchId, status])
+  @@index([branchId, workPermitExpiry])
+  @@map("staff")
+}
+
+model StaffDeduction {
+  id       String @id @default(uuid())
+  branchId String
+  staffId  String
+
+  date         DateTime @db.Date
+  /// "มาสาย", "ขาดงาน", "ทำของเสียหาย", "เบิกล่วงหน้า"
+  type         String
+  amountSatang Int
+  note         String?
+
+  /// Set once the deduction has been pulled into a paid payroll, so it is
+  /// never double-counted in a later month.
+  payrollLineId String?
+
+  createdAt DateTime @default(now())
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  staff  Staff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, date])
+  @@index([staffId, date])
+  @@map("staff_deductions")
+}
+
+model Payroll {
+  id       String @id @default(uuid())
+  branchId String
+
+  /// "2026-07"
+  yearMonth   String
+  paidAt      DateTime?
+  totalSatang Int       @default(0)
+
+  /// The Expense row auto-created when the payroll is marked paid.
+  expenseId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch  Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  expense Expense?      @relation(fields: [expenseId], references: [id])
+  lines   PayrollLine[]
+
+  @@unique([branchId, yearMonth])
+  @@index([branchId, yearMonth])
+  @@map("payrolls")
+}
+
+model PayrollLine {
+  id        String @id @default(uuid())
+  branchId  String
+  payrollId String
+  staffId   String
+
+  /// Snapshot of the wage terms used for this slip, so editing the staff
+  /// record later never rewrites a payslip that was already handed out.
+  wageTypeSnapshot WageType
+  wageRateSnapshot Int
+  daysWorked       Int      @default(0)
+
+  grossSatang  Int
+  bonusSatang  Int @default(0)
+  deductSatang Int @default(0)
+  netSatang    Int
+
+  note      String?
+  createdAt DateTime @default(now())
+
+  branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  payroll Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  staff   Staff   @relation(fields: [staffId], references: [id])
+
+  @@unique([payrollId, staffId])
+  @@index([branchId, staffId])
+  @@map("payroll_lines")
+}
+
+// ---------------------------------------------------------------------------
+// Floor plan
+// ---------------------------------------------------------------------------
+
+model DiningTable {
+  id       String @id @default(uuid())
+  branchId String
+
+  name      String /// "A1", "โต๊ะ 5"
+  zone      String? /// "ในร้าน", "หน้าร้าน", "ห้องแอร์"
+  seats     Int     @default(4)
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  /// What is printed on the sticker stuck to this table (Step 7).
+  ///
+  /// PERMANENT, and that is a correction to what Step 0 assumed. The token
+  /// started life on TableSession so it could rotate every sitting and a
+  /// screenshot would die with the bill. That cannot work: the customer reaches
+  /// the page by scanning a printed sticker, and a sticker cannot be reprinted
+  /// between two bowls of noodles.
+  ///
+  /// So the token is assumed to leak, and the thing that protects the shop is
+  /// not secrecy — it is that every QR line waits for a member of staff to
+  /// press อนุมัติ. A leaked sticker buys a stranger one thing: the ability to
+  /// put a request in a queue that a human reads. A manager can rotate this
+  /// from จัดการโต๊ะ and print a new sticker if one is being abused.
+  qrToken String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch   Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  sessions TableSession[]
+  orders   Order[]
+
+  @@unique([branchId, name])
+  @@index([branchId, zone, sortOrder])
+  @@map("dining_tables")
+}
+
+/// One sitting at a table: opened with the first bill, closed when the last one
+/// is paid. It is what ties several bills at one table into one visit.
+///
+/// It used to carry the QR token as well. It no longer does — see
+/// DiningTable.qrToken for why a token that rotates per sitting cannot be the
+/// one printed on a sticker.
+model TableSession {
+  id       String @id @default(uuid())
+  branchId String
+  tableId  String
+
+  openedAt DateTime  @default(now())
+  closedAt DateTime?
+
+  branch Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  table  DiningTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([branchId, closedAt])
+  @@index([tableId, closedAt])
+  @@map("table_sessions")
+}
+
+// ---------------------------------------------------------------------------
+// Menu
+// ---------------------------------------------------------------------------
+
+model MenuCategory {
+  id       String @id @default(uuid())
+  branchId String
+
+  name          String
+  icon          String?
+  sortOrder     Int      @default(0)
+  /// Sub-categories are a plain string array: they have no data of their own
+  /// and the owner reorders them constantly. A table would only add joins.
+  subcategories String[] @default([])
+  isActive      Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  items  MenuItem[]
+
+  @@unique([branchId, name])
+  @@index([branchId, sortOrder])
+  @@map("menu_categories")
+}
+
+model MenuItem {
+  id         String @id @default(uuid())
+  branchId   String
+  categoryId String
+
+  subcategory String? /// must be one of MenuCategory.subcategories
+  name        String
+  description String?
+  icon        String?
+
+  priceSatang Int
+  /// DERIVED from recipeLines since Step 6 — a cache of recipeCostSatang(), not
+  /// a number anyone types. Stays put when the recipe is empty, and the
+  /// management screen then says "ยังไม่ได้ใส่สูตร" rather than claiming 0.
+  costSatang  Int @default(0)
+
+  /// Kitchen station this item is fired to: "ครัวเส้น", "เครื่องดื่ม".
+  station String?
+
+  /// "หมดวันนี้" — still drawn on the till, greyed out, so staff can answer
+  /// the customer instead of re-tapping a button that vanished.
+  isAvailable Boolean @default(true)
+  /// "เลิกขาย" — off the till entirely. Separate from isAvailable because a
+  /// dish that has ever been sold can never be deleted (the order lines still
+  /// point at it), and hiding it must not read as "we ran out".
+  isActive    Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch      Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  category    MenuCategory    @relation(fields: [categoryId], references: [id])
+  groups      MenuItemGroup[]
+  recipeLines RecipeLine[]
+  orderLines  OrderLine[]
+
+  @@unique([branchId, name])
+  @@index([branchId, categoryId, sortOrder])
+  @@index([branchId, isAvailable])
+  @@map("menu_items")
+}
+
+/// A set of choices: เส้น / น้ำซุป / ขนาด / เพิ่มเติม / ไม่ใส่
+model ModifierGroup {
+  id       String @id @default(uuid())
+  branchId String
+
+  name       String
+  isRequired Boolean @default(false)
+  /// How many options may be picked. 1 = radio, >1 = checkbox.
+  maxSelect  Int     @default(1)
+  minSelect  Int     @default(0)
+  /// true for "ไม่ใส่..." groups — removals, shown in a different colour and
+  /// printed with a leading "ไม่" on the kitchen ticket.
+  isNegative Boolean @default(false)
+  sortOrder  Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch    Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  modifiers Modifier[]
+  menuItems MenuItemGroup[]
+
+  @@unique([branchId, name])
+  @@index([branchId, sortOrder])
+  @@map("modifier_groups")
+}
+
+model Modifier {
+  id       String @id @default(uuid())
+  branchId String
+  groupId  String
+
+  name             String
+  /// May be negative (a removal that gives money back).
+  priceDeltaSatang Int     @default(0)
+  costDeltaSatang  Int     @default(0)
+  /// true = preselected. Rule: the most common choice is the default, so
+  /// ordering one bowl takes fewer taps than writing it down.
+  isDefault        Boolean @default(false)
+  sortOrder        Int     @default(0)
+  isAvailable      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch      Branch              @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  group       ModifierGroup       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  recipeLines RecipeLine[]
+  orderLines  OrderLineModifier[]
+
+  @@unique([groupId, name])
+  @@index([branchId, groupId, sortOrder])
+  @@map("modifiers")
+}
+
+/// Which option groups a menu item offers.
+model MenuItemGroup {
+  branchId   String
+  menuItemId String
+  groupId    String
+  sortOrder  Int    @default(0)
+
+  branch   Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  menuItem MenuItem      @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  group    ModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([menuItemId, groupId])
+  @@index([branchId])
+  @@map("menu_item_groups")
+}
+
+// ---------------------------------------------------------------------------
+// Ingredients & recipes (BOM)
+// ---------------------------------------------------------------------------
+
+model Ingredient {
+  id       String @id @default(uuid())
+  branchId String
+
+  name          String
+  /// "กรัม", "มิลลิลิตร", "ชิ้น" — everything is converted to this unit.
+  baseUnit      String
+  /// Moving average cost of ONE baseUnit, in satang. Int, so a cheap unit
+  /// should be modelled small enough (per gram, not per kilo) to stay precise.
+  avgCostSatang Int    @default(0)
+  shelfLifeDays Int?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch      Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  recipeLines RecipeLine[]
+  movements   StockMovement[]
+
+  @@unique([branchId, name])
+  @@index([branchId, isActive])
+  @@map("ingredients")
+}
+
+/// One ingredient consumed by a menu item OR by a modifier (exactly one of the two).
+model RecipeLine {
+  id       String @id @default(uuid())
+  branchId String
+
+  menuItemId   String?
+  modifierId   String?
+  ingredientId String
+
+  /// Quantity in the ingredient's baseUnit. Not money, so Decimal is fine here.
+  ///
+  /// MAY BE NEGATIVE, and only on a modifier: "บะหมี่" is −120 g เส้นเล็ก plus
+  /// +120 g บะหมี่, so its cost delta is the difference rather than the price
+  /// of a whole new portion of noodles.
+  quantity Decimal @db.Decimal(12, 4)
+
+  createdAt DateTime @default(now())
+
+  branch     Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  menuItem   MenuItem?  @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  modifier   Modifier?  @relation(fields: [modifierId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  /// One row per ingredient per recipe. Two rows for the same ingredient would
+  /// still add up correctly, but the editor would show the same thing twice and
+  /// whoever fixed one of them would leave the other behind.
+  ///
+  /// Postgres treats NULLs as distinct, so a menu item's rows never collide
+  /// with a modifier's — which is what makes one index per side work at all.
+  @@unique([menuItemId, ingredientId])
+  @@unique([modifierId, ingredientId])
+  @@index([branchId])
+  @@index([menuItemId])
+  @@index([modifierId])
+  @@map("recipe_lines")
+}
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+model Order {
+  /// UUID v4 generated on the tablet (rule #6) so a bill can be opened offline.
+  id       String @id
+  branchId String
+
+  tableId   String?
+  sessionId String?
+
+  /// Human-facing running number for the day, e.g. "A-014". Allocated by the
+  /// server; an offline device shows a temporary local label until it syncs.
+  orderNo String?
+
+  /// Rule #4 — the trading day this bill belongs to, in the branch timezone.
+  businessDate DateTime @db.Date
+
+  status  OrderStatus  @default(OPEN)
+  channel OrderChannel @default(DINE_IN)
+
+  openedAt DateTime  @default(now())
+  paidAt   DateTime?
+
+  /// --- money, all Int satang, all snapshots at the moment of payment ---
+  subtotalExVatSatang Int @default(0)
+  vatRateBpSnapshot   Int @default(0)
+  vatAmountSatang     Int @default(0)
+  totalSatang         Int @default(0)
+  /// Food cost of this bill, summed from the line cost snapshots.
+  costSatang          Int @default(0)
+  discountSatang      Int @default(0)
+
+  isVatInclusive      Boolean   @default(true)
+  /// ใบเสร็จรับเงิน number, allocated from DocSequence at payment (rule #9).
+  /// A short receipt MAY be issued offline, unlike taxInvoiceNo.
+  receiptNo           String?
+  /// Allocated from DocSequence, ONLINE ONLY (rule #9).
+  taxInvoiceNo        String?
+  customerTaxId       String?
+  customerName        String?
+  /// --- the rest of what a FULL tax invoice must carry (Step 10) ---
+  customerAddress     String?
+  /// "สำนักงานใหญ่" or "สาขาที่ 00002". Required on a full tax invoice.
+  customerBranchLabel String?
+  /// When the full tax invoice was issued. Set once and never cleared: the
+  /// document is out of the printer and the only way back is a credit note.
+  taxInvoiceIssuedAt  DateTime?
+
+  /// true when the bill was first created on a device with no connection.
+  createdOffline Boolean   @default(false)
+  syncedAt       DateTime?
+
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch     Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  table      DiningTable?    @relation(fields: [tableId], references: [id])
+  session    TableSession?   @relation(fields: [sessionId], references: [id])
+  lines      OrderLine[]
+  tickets    KitchenTicket[]
+  payments   Payment[]
+  voidLogs   VoidLog[]
+  creditNote CreditNote?
+
+  @@unique([branchId, orderNo])
+  @@unique([branchId, receiptNo])
+  @@unique([branchId, taxInvoiceNo])
+  @@index([branchId, businessDate, status])
+  @@index([branchId, status])
+  @@index([sessionId])
+  @@map("orders")
+}
+
+model OrderLine {
+  /// Client-generated UUID v4 (rule #6).
+  id       String @id
+  branchId String
+  orderId  String
+
+  menuItemId String
+
+  /// --- rule #7: snapshots. Reports read these, never MenuItem. ---
+  nameSnapshot    String
+  qty             Int
+  unitPriceSatang Int
+  unitCostSatang  Int
+  /// Per-line VAT is informational only; the bill's VAT is computed once on
+  /// the order total so the printed figures always add up.
+  vatAmountSatang Int    @default(0)
+
+  source     OrderLineSource @default(STAFF)
+  /// Set when the line was sent to the kitchen. NULL = still on the tablet,
+  /// or (for QR orders) still waiting for staff approval.
+  firedAt    DateTime?
+  /// A QR line only becomes fireable once a staff member approves it.
+  approvedAt DateTime?
+
+  /// Voided lines stay on the bill for the audit trail; they are excluded
+  /// from every total. Deleting them would erase the evidence.
+  voidedAt DateTime?
+
+  note      String? /// "ไม่ผัก เผ็ดน้อย"
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch      Branch              @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  order       Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem    MenuItem            @relation(fields: [menuItemId], references: [id])
+  modifiers   OrderLineModifier[]
+  ticketLines TicketLine[]
+  voidLogs    VoidLog[]
+
+  @@index([orderId])
+  @@index([branchId, firedAt])
+  @@index([branchId, menuItemId])
+  @@map("order_lines")
+}
+
+model OrderLineModifier {
+  id          String @id @default(uuid())
+  branchId    String
+  orderLineId String
+  modifierId  String
+
+  /// Snapshots again — renaming "พิเศษ" later must not rewrite old bills.
+  nameSnapshot     String
+  priceDeltaSatang Int    @default(0)
+  costDeltaSatang  Int    @default(0)
+
+  /// Position within the line, assigned from the modifier GROUP order at the
+  /// moment of sale. Without it Postgres is free to hand these rows back in
+  /// any order, and a reprinted ticket would read "น้ำใส · เส้นเล็ก" where the
+  /// first one read "เส้นเล็ก · น้ำใส" — same bowl, different slip.
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  branch    Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  orderLine OrderLine @relation(fields: [orderLineId], references: [id], onDelete: Cascade)
+  modifier  Modifier  @relation(fields: [modifierId], references: [id])
+
+  @@index([orderLineId])
+  @@index([branchId])
+  @@map("order_line_modifiers")
+}
+
+// ---------------------------------------------------------------------------
+// Kitchen display
+// ---------------------------------------------------------------------------
+
+model KitchenTicket {
+  id       String @id @default(uuid())
+  branchId String
+  orderId  String
+
+  /// Snapshot so the ticket still reads "A1" after the bill is moved.
+  tableName String?
+  station   String  @default("ครัว")
+
+  firedAt DateTime     @default(now())
+  doneAt  DateTime?
+  status  TicketStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  order  Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  lines  TicketLine[]
+
+  @@index([branchId, station, status])
+  @@index([branchId, firedAt])
+  @@map("kitchen_tickets")
+}
+
+model TicketLine {
+  id          String @id @default(uuid())
+  branchId    String
+  ticketId    String
+  orderLineId String
+
+  /// Denormalised so the kitchen screen renders from one row, no joins,
+  /// and keeps showing the right text even if the line is voided mid-cook.
+  nameSnapshot      String
+  qty               Int
+  modifiersSnapshot String? /// "เส้นเล็ก · น้ำใส · พิเศษ · ไม่ผัก"
+  note              String?
+
+  doneAt DateTime?
+
+  branch    Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  ticket    KitchenTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  orderLine OrderLine     @relation(fields: [orderLineId], references: [id])
+
+  @@index([ticketId])
+  @@index([branchId])
+  @@map("ticket_lines")
+}
+
+// ---------------------------------------------------------------------------
+// Money in
+// ---------------------------------------------------------------------------
+
+model Payment {
+  id       String @id @default(uuid())
+  branchId String
+  orderId  String
+
+  method PaymentMethod
+
+  amountSatang   Int
+  /// Cash handed over. NULL for PromptPay.
+  receivedSatang Int?
+  changeSatang   Int? @default(0)
+
+  /// PromptPay reference from the bank slip, once confirmed.
+  referenceNo String?
+
+  paidAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, paidAt])
+  @@index([orderId])
+  @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// Audit (rule #8)
+// ---------------------------------------------------------------------------
+
+/// Every voided line. Kept separate from AuditLog because the owner reads this
+/// one directly ("what got thrown away today"), not as a debugging trail.
+model VoidLog {
+  id          String  @id @default(uuid())
+  branchId    String
+  orderId     String
+  orderLineId String?
+
+  nameSnapshot String
+  qty          Int
+  amountSatang Int
+
+  /// "ลูกค้าเปลี่ยนใจ", "ทำผิดเมนู", "ของหมด", "ทำหล่น"
+  reason String
+  note   String?
+
+  requestedByStaffId String
+  /// A void is never self-approved: the API rejects it when this equals
+  /// requestedByStaffId or when the approver lacks APPROVE_VOID.
+  approvedByStaffId  String
+
+  /// true = the kitchen had already started cooking, so it is a real loss.
+  wasFired  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  branch      Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  order       Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderLine   OrderLine? @relation(fields: [orderLineId], references: [id])
+  requestedBy Staff      @relation("VoidRequestedBy", fields: [requestedByStaffId], references: [id])
+  approvedBy  Staff      @relation("VoidApprovedBy", fields: [approvedByStaffId], references: [id])
+
+  @@index([branchId, createdAt])
+  @@index([orderId])
+  @@map("void_logs")
+}
+
+model AuditLog {
+  id       String  @id @default(uuid())
+  branchId String
+  staffId  String?
+
+  /// "VOID_LINE", "APPLY_DISCOUNT", "EDIT_ORDER", "CHANGE_PRICE", "PAY_PAYROLL"
+  action     String
+  entityType String
+  entityId   String
+
+  before Json?
+  after  Json?
+  reason String?
+
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  staff  Staff? @relation(fields: [staffId], references: [id])
+
+  @@index([branchId, createdAt])
+  @@index([branchId, entityType, entityId])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Money out & closing
+// ---------------------------------------------------------------------------
+
+model Expense {
+  id       String @id @default(uuid())
+  branchId String
+
+  /// The BUSINESS date the money went out on, not createdAt (rule #4), so a
+  /// supplier paid at 01:00 lands in the night the shop was actually open.
+  date          DateTime @db.Date
+  /// One of the ExpenseCategory KEYS from @pos/shared: "INGREDIENT", "WAGE",
+  /// "RENT", "UTILITY", "EQUIPMENT", "OTHER" — not the Thai label. Renaming a
+  /// label on screen must never orphan six months of rows, and the break-even
+  /// calculation keys its FIXED/VARIABLE split off these values.
+  category      String
+  amountSatang  Int
+  note          String?
+  paidBy        PaidBy   @default(CASH)
+  attachmentUrl String?
+
+  /// true when this row was generated by a payroll payment, so the P&L does
+  /// not count wages twice.
+  isAutoGenerated Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch  Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  payroll Payroll?
+
+  @@index([branchId, date])
+  @@index([branchId, category, date])
+  @@map("expenses")
+}
+
+/// Frozen monthly P&L. Once closed the figures never move, even if an old
+/// bill is corrected — a correction becomes an adjustment in the next month.
+model MonthlyClose {
+  id       String @id @default(uuid())
+  branchId String
+
+  yearMonth String /// "2026-07"
+
+  salesSatang    Int @default(0)
+  foodCostSatang Int @default(0)
+  wageSatang     Int @default(0)
+  rentSatang     Int @default(0)
+  otherSatang    Int @default(0)
+  vatSatang      Int @default(0)
+  profitSatang   Int @default(0)
+
+  closedAt        DateTime?
+  closedByStaffId String?
+  note            String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, yearMonth])
+  @@index([branchId, yearMonth])
+  @@map("monthly_closes")
+}
+
+// ---------------------------------------------------------------------------
+// Document numbering (rule #9)
+// ---------------------------------------------------------------------------
+
+model DocSequence {
+  id       String @id @default(uuid())
+  branchId String
+
+  docType    DocType
+  year       Int
+  /// Last number handed out. Incremented inside a transaction with a row lock;
+  /// gaps are acceptable, duplicates are not.
+  lastNumber Int     @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, docType, year])
+  @@map("doc_sequences")
+}
+
+/// ใบลดหนี้ — the only legal way to undo a sale that already has a tax invoice
+/// (project rule: ห้ามลบบิลที่ออกใบกำกับภาษีแล้ว — ต้องออกใบลดหนี้แทน).
+///
+/// A row here is a DOCUMENT, not a status flag, which is why it duplicates
+/// amounts that also live on the order: the order can go on to be corrected,
+/// re-reported and re-totalled, and this must still say exactly what was
+/// printed and handed to the customer on the day.
+///
+/// It is 1:1 with an order — `orderId` is unique — because a sale can only be
+/// reversed once. A second reversal of the same bill is not a second document,
+/// it is a mistake.
+model CreditNote {
+  id       String @id @default(uuid())
+  branchId String
+  orderId  String @unique
+
+  /// From DocSequence, ONLINE ONLY like every tax document (rule #9).
+  creditNoteNo String
+  /// The document being reversed. Null when the sale only ever had a receipt.
+  taxInvoiceNo String?
+  receiptNo    String?
+
+  /// The trading day the CREDIT NOTE was issued — not the day of the sale.
+  /// A bill paid on the 30th and reversed on the 1st belongs to two months.
+  businessDate DateTime @db.Date
+
+  subtotalExVatSatang Int
+  vatAmountSatang     Int
+  vatRateBpSnapshot   Int @default(0)
+  totalSatang         Int
+
+  reason String /// CreditNoteReason key
+  note   String?
+
+  issuedByStaffId   String?
+  approvedByStaffId String?
+  issuedAt          DateTime @default(now())
+
+  branch     Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  order      Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  issuedBy   Staff? @relation("CreditNoteIssuedBy", fields: [issuedByStaffId], references: [id])
+  approvedBy Staff? @relation("CreditNoteApprovedBy", fields: [approvedByStaffId], references: [id])
+
+  @@unique([branchId, creditNoteNo])
+  @@index([branchId, businessDate])
+  @@map("credit_notes")
+}
+
+// ---------------------------------------------------------------------------
+// Printing
+// ---------------------------------------------------------------------------
+
+/// A durable print job.
+///
+/// NOT in the original data model — added in Step 1 because the print agent is
+/// a separate process on a Pi that can be rebooting, unplugged or out of paper
+/// at the exact moment a cashier presses "print". A fire-and-forget socket
+/// message would simply vanish; a row survives, gets retried, and leaves a
+/// record of what actually came out of the machine.
+model PrintJob {
+  id       String @id @default(uuid())
+  branchId String
+
+  /// Which printer. One agent process drives one station.
+  station String       @default("counter")
+  type    PrintJobType
+
+  /// The ReceiptDoc as JSON — a description of the slip, not printer bytes,
+  /// so the same job can be re-rendered for a different paper width or
+  /// replayed for support.
+  payload Json
+
+  status      PrintJobStatus @default(QUEUED)
+  attempts    Int            @default(0)
+  maxAttempts Int            @default(3)
+  lastError   String?
+
+  /// Set when an agent takes the job. A claim older than the timeout is
+  /// treated as a dead agent and the job goes back in the queue.
+  claimedAt   DateTime?
+  claimedBy   String?
+  printedAt   DateTime?
+  /// Earliest time this job may be claimed again, used for retry backoff.
+  availableAt DateTime  @default(now())
+
+  /// Set from Step 2 onwards, when jobs come from real bills.
+  orderId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, station, status, availableAt])
+  @@index([branchId, createdAt])
+  @@map("print_jobs")
+}
+
+// ---------------------------------------------------------------------------
+// Later phases — tables exist now so no migration is needed to start using them
+// ---------------------------------------------------------------------------
+
+/// Rule #5: stock is a ledger of movements. The balance is SUM(quantity),
+/// never a mutable column, so a miscount can always be traced back.
+model StockMovement {
+  id           String @id @default(uuid())
+  branchId     String
+  ingredientId String
+
+  type           StockMovementType
+  /// Signed, in the ingredient's baseUnit: RECEIVE positive, SALE/WASTE negative.
+  quantity       Decimal           @db.Decimal(12, 4)
+  /// Cost per baseUnit at the moment of the movement, for moving-average costing.
+  unitCostSatang Int?
+
+  /// Order id, purchase id, count sheet id — whatever caused this movement.
+  refDocId String?
+  note     String?
+
+  createdAt DateTime @default(now())
+
+  branch     Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@index([branchId, ingredientId, createdAt])
+  @@index([branchId, type, createdAt])
+  @@map("stock_movements")
+}
+
+/// A batch of prepped food (น้ำซุป, ลูกชิ้นลวก) with its own expiry.
+model PrepBatch {
+  id       String @id @default(uuid())
+  branchId String
+
+  name            String
+  ingredientsUsed Json
+  yieldQty        Decimal   @db.Decimal(12, 4)
+  yieldUnit       String
+  madeAt          DateTime  @default(now())
+  expiresAt       DateTime?
+  madeByStaffId   String?
+
+  createdAt DateTime @default(now())
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  madeBy Staff? @relation(fields: [madeByStaffId], references: [id])
+
+  @@index([branchId, expiresAt])
+  @@map("prep_batches")
+}
+
+/// Cash drawer session: opening float vs counted cash at close.
+model Shift {
+  id       String @id @default(uuid())
+  branchId String
+  staffId  String
+
+  openedAt DateTime  @default(now())
+  closedAt DateTime?
+
+  openingCashSatang  Int  @default(0)
+  countedCashSatang  Int?
+  expectedCashSatang Int?
+  /// counted - expected. Negative means cash is missing.
+  varianceSatang     Int?
+
+  note String?
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  staff  Staff  @relation(fields: [staffId], references: [id])
+
+  @@index([branchId, openedAt])
+  @@map("shifts")
+}
