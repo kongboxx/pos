@@ -30,7 +30,7 @@ import {
 import { api } from '../../api-client.js';
 import { useSession } from '../../session-store.js';
 import { useSync } from '../../offline/sync-store.js';
-import { path } from '../../routes.js';
+import { path } from '@pos/web-kit';
 
 export function ShiftPage(): React.ReactElement {
   const navigate = useNavigate();

@@ -8,7 +8,7 @@
     "node": ">=20.11.0"
   },
   "scripts": {
-    "build:shared": "pnpm --filter @pos/shared build",
+    "build:shared": "pnpm --filter @pos/shared build && pnpm --filter @pos/web-kit build",
     "dev": "pnpm build:shared && pnpm -r --parallel dev",
     "dev:api": "pnpm build:shared && pnpm --filter @pos/api dev",
     "dev:web": "pnpm build:shared && pnpm --filter @pos/web dev",

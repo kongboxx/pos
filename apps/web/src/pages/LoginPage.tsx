@@ -15,7 +15,7 @@ import { Role, type BranchChoice, type StaffPublic } from '@pos/shared';
 import { api } from '../api-client.js';
 import { Keypad } from '../components/Keypad.js';
 import { useSession } from '../session-store.js';
-import { path } from '../routes.js';
+import { path } from '@pos/web-kit';
 
 const PIN_LENGTH = 4;
 

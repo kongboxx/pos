@@ -31,7 +31,7 @@ import {
 } from '@pos/shared';
 import { api } from '../../api-client.js';
 import { onLiveEvent, useLive } from '../../live-store.js';
-import { path } from '../../routes.js';
+import { path } from '@pos/web-kit';
 
 /** How often the board refetches with, and without, a working socket. */
 const POLL_LIVE_MS = 15_000;

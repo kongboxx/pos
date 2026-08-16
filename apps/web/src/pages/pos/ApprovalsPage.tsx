@@ -28,7 +28,7 @@ import {
 } from '@pos/shared';
 import { api } from '../../api-client.js';
 import { onLiveEvent } from '../../live-store.js';
-import { path } from '../../routes.js';
+import { path } from '@pos/web-kit';
 
 /** Slow: the socket does the telling. This only covers a socket that died. */
 const POLL_MS = 15_000;

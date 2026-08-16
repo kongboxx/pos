@@ -13,7 +13,7 @@
  */
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { path } from '../../routes.js';
+import { path } from '@pos/web-kit';
 
 const TABS = [
   { to: path.reportDaily, label: 'สรุปวัน' },

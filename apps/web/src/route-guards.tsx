@@ -10,7 +10,7 @@
 
 import { Navigate, Outlet } from 'react-router-dom';
 import type { Permission } from '@pos/shared';
-import { path } from './routes.js';
+import { path } from '@pos/web-kit';
 import { useSession } from './session-store.js';
 
 export function RequireAuth(): React.ReactElement {

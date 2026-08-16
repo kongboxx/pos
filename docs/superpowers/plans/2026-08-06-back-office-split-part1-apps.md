@@ -232,6 +232,8 @@ git add packages/web-kit pnpm-lock.yaml && git commit -m "chore: scaffold @pos/w
 - Modify: `apps/web/package.json` (เพิ่ม `@pos/web-kit`)
 - Modify: `apps/web/src/pages/office/PayrollPage.test.tsx` (ครอบ `waitFor` ที่เทสต์ flaky — เลื่อนมาจากแผนที่ 3 เพราะมันทำให้ `pnpm test` แดงสุ่ม ๆ จนใช้เป็นเกณฑ์ผ่านของ task ถัดไปไม่ได้)
 
+> **หมายเหตุตอนลงมือ:** การแก้ `build:shared` ให้ build `web-kit` ด้วย เดิมอยู่ที่ Task 7 แต่ต้องเลื่อนมาทำที่ Task 3 — `apps/web` พึ่ง `@pos/web-kit` ตั้งแต่ task นี้แล้ว ถ้าไม่แก้ เครื่องที่ clone ใหม่จะรัน `pnpm dev:web` ไม่ผ่านเพราะยังไม่มี `web-kit/dist`
+
 **Interfaces:**
 - Consumes: `@pos/web-kit` จาก Task 1
 - Produces:

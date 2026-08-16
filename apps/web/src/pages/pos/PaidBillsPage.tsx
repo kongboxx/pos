@@ -29,7 +29,7 @@ import { CreditNoteDialog } from '../../components/CreditNoteDialog.js';
 import { useBusinessToday } from '../../business-day.js';
 import { TaxInvoiceDialog } from '../../components/TaxInvoiceDialog.js';
 import { useSession } from '../../session-store.js';
-import { path } from '../../routes.js';
+import { path } from '@pos/web-kit';
 
 export function PaidBillsPage(): React.ReactElement {
   const navigate = useNavigate();

@@ -8,7 +8,7 @@
  */
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { path } from '../../routes.js';
+import { path } from '@pos/web-kit';
 import {
   DOCUMENT_WARNING_DAYS,
   documentExpiryState,

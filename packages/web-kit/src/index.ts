@@ -11,3 +11,4 @@
  */
 
 export * from './http.js';
+export * from './routes.js';

@@ -57,7 +57,7 @@ import { OrderPage } from './pages/pos/OrderPage.js';
 import { PaidBillsPage } from './pages/pos/PaidBillsPage.js';
 import { ShiftPage } from './pages/pos/ShiftPage.js';
 import { RequireAuth, RequirePermission } from './route-guards.js';
-import { path } from './routes.js';
+import { path } from '@pos/web-kit';
 import { useSession } from './session-store.js';
 
 /** The one door into the back office. See pages/office/routes.tsx. */

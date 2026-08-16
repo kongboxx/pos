@@ -15,7 +15,7 @@
 
 import { Component, Suspense } from 'react';
 import { Link } from 'react-router-dom';
-import { path } from './routes.js';
+import { path } from '@pos/web-kit';
 
 interface State {
   failed: boolean;

@@ -52,7 +52,7 @@ import { addOrBumpLine, readFloorPlan, readMenu, runMutation } from '../../offli
 import { useSync } from '../../offline/sync-store.js';
 import { useLocalOrder } from '../../offline/use-local-order.js';
 import { useSession } from '../../session-store.js';
-import { path } from '../../routes.js';
+import { path } from '@pos/web-kit';
 
 /** What the sheet is currently working on: a new line, or an existing one. */
 type SheetState =

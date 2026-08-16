@@ -31,7 +31,7 @@ import {
 } from '../../offline/repository.js';
 import { useSync } from '../../offline/sync-store.js';
 import { useSession } from '../../session-store.js';
-import { path } from '../../routes.js';
+import { path } from '@pos/web-kit';
 
 /** A takeaway bill has no table to sit on, so it needs its own row. */
 interface TakeawayCard {

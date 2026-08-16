@@ -11,7 +11,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Permission } from '@pos/shared';
 import { useSession } from '../../session-store.js';
-import { path } from '../../routes.js';
+import { path } from '@pos/web-kit';
 
 const TABS = [
   { to: path.settingsBranches, label: 'ตั้งค่าสาขา', permission: Permission.MANAGE_BRANCH },
