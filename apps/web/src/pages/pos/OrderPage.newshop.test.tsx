@@ -17,7 +17,7 @@ import { api } from '../../api-client.js';
 import { saveMenu } from '../../offline/catalog.js';
 import { clearLocalData, putOrder } from '../../offline/db.js';
 import { useSync } from '../../offline/sync-store.js';
-import { useSession } from '../../session-store.js';
+import { useSession } from '../../session.js';
 import { OrderPage } from './OrderPage.js';
 
 vi.mock('../../api-client.js', () => ({

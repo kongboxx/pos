@@ -16,7 +16,7 @@
  */
 
 import { toBusinessDate } from '@pos/shared';
-import { useSession } from './session-store.js';
+import { useSession } from './session.js';
 
 /** Today in the branch's terms: its timezone, its cutoff hour. */
 export function useBusinessToday(): string {

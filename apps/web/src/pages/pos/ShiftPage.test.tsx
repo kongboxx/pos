@@ -13,7 +13,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { ShiftDto } from '@pos/shared';
 import { api } from '../../api-client.js';
-import { useSession } from '../../session-store.js';
+import { useSession } from '../../session.js';
 import { useSync } from '../../offline/sync-store.js';
 import { ShiftPage } from './ShiftPage.js';
 

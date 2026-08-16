@@ -11,7 +11,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import type { Permission } from '@pos/shared';
 import { path } from '@pos/web-kit';
-import { useSession } from './session-store.js';
+import { useSession } from './session.js';
 
 export function RequireAuth(): React.ReactElement {
   const status = useSession((state) => state.status);

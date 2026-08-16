@@ -31,8 +31,8 @@
  * For the staff app the session is checked ONCE on boot by asking the server
  * (`/auth/me`). If that call cannot go out, the app falls back to the identity
  * cached on the device rather than showing a PIN screen nobody could get past
- * while offline — see session-store.ts for why that is not a weakening of the
- * login.
+ * while offline — see session.ts, and the factory it wraps in @pos/web-kit,
+ * for why that is not a weakening of the login.
  *
  * The sync loop is started above the routes, because it has to keep running
  * while the cashier moves between screens: a bill queued on the order page must
@@ -58,7 +58,7 @@ import { PaidBillsPage } from './pages/pos/PaidBillsPage.js';
 import { ShiftPage } from './pages/pos/ShiftPage.js';
 import { RequireAuth, RequirePermission } from './route-guards.js';
 import { path } from '@pos/web-kit';
-import { useSession } from './session-store.js';
+import { useSession } from './session.js';
 
 /** The one door into the back office. See pages/office/routes.tsx. */
 const OfficeRoutes = lazy(() =>

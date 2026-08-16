@@ -33,7 +33,7 @@ import {
 import { api } from '../../api-client.js';
 import { ExpiryBadge, expiryWarningText, StaffShell } from '../../components/office/StaffShell.js';
 import { useBusinessToday } from '../../business-day.js';
-import { useSession } from '../../session-store.js';
+import { useSession } from '../../session.js';
 
 interface Draft {
   fullName: string;

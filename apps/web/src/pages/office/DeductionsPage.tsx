@@ -27,7 +27,7 @@ import {
 import { api } from '../../api-client.js';
 import { useBusinessToday } from '../../business-day.js';
 import { StaffShell } from '../../components/office/StaffShell.js';
-import { useSession } from '../../session-store.js';
+import { useSession } from '../../session.js';
 
 export function DeductionsPage(): React.ReactElement {
   const today = useBusinessToday();

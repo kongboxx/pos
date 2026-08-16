@@ -34,7 +34,7 @@ import {
 import { api } from '../../api-client.js';
 import { useBusinessToday } from '../../business-day.js';
 import { Card, ReportShell, Row } from '../../components/office/ReportShell.js';
-import { useSession } from '../../session-store.js';
+import { useSession } from '../../session.js';
 
 interface Draft {
   date: string;

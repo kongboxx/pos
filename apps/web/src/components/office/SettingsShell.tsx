@@ -10,7 +10,7 @@
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Permission } from '@pos/shared';
-import { useSession } from '../../session-store.js';
+import { useSession } from '../../session.js';
 import { path } from '@pos/web-kit';
 
 const TABS = [

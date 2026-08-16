@@ -17,7 +17,7 @@ import { VoidReportPage } from './VoidReportPage.js';
 
 vi.mock('../../api-client.js', () => ({ api: { voidReport: vi.fn() } }));
 
-vi.mock('../../session-store.js', () => ({
+vi.mock('../../session.js', () => ({
   useSession: (selector: (state: unknown) => unknown) =>
     selector({ branch: { timezone: 'Asia/Bangkok', dayCutoffHour: 4 }, can: () => true }),
 }));

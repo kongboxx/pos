@@ -51,7 +51,7 @@ import { putOrder } from '../../offline/db.js';
 import { addOrBumpLine, readFloorPlan, readMenu, runMutation } from '../../offline/repository.js';
 import { useSync } from '../../offline/sync-store.js';
 import { useLocalOrder } from '../../offline/use-local-order.js';
-import { useSession } from '../../session-store.js';
+import { useSession } from '../../session.js';
 import { path } from '@pos/web-kit';
 
 /** What the sheet is currently working on: a new line, or an existing one. */

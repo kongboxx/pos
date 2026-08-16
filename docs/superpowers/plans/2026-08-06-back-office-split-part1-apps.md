@@ -620,7 +620,14 @@ import { Role } from '@pos/shared';
 import { createSessionStore } from './session-store.js';
 
 const user = { staffId: 's1', branchId: 'b1', role: Role.OWNER, fullName: 'หน่อย', nickname: null };
-const branch = { id: 'b1', name: 'ร้าน', branchCode: 'HQ', businessType: 'RESTAURANT' };
+// ต้องครบทุกฟิลด์ของ MeResponse['branch'] ไม่งั้น typecheck ไม่ผ่าน — ตอนเขียน
+// แผนใส่มาแค่ 4 ตัว ของจริงมี 11 (เพิ่ม vatEnabled, vatRateBp, priceIncludesVat,
+// vatEffectiveDate, timezone, dayCutoffHour, promptPayConfigured)
+const branch: MeResponse['branch'] = {
+  id: 'b1', name: 'ร้าน', branchCode: 'HQ', businessType: 'RESTAURANT',
+  vatEnabled: false, vatRateBp: 0, priceIncludesVat: true, vatEffectiveDate: null,
+  timezone: 'Asia/Bangkok', dayCutoffHour: 4, promptPayConfigured: false,
+};
 
 function apiStub(over: Partial<Parameters<typeof createSessionStore>[0]['api']> = {}) {
   return {
@@ -906,7 +913,9 @@ for(const f of files){
 "
 ```
 
-ไฟล์เทสต์ที่ `vi.mock('./session-store.js', ...)` ต้องเปลี่ยนเป็น `vi.mock('./session.js', ...)` ด้วย — คำสั่งข้างบนครอบคลุมแล้วเพราะ `vi.mock` ก็เขียนเป็นสตริงเดียวกัน แต่ต้องตรวจด้วยตา:
+> **ผิดตอนเขียนแผน แก้แล้วตอนลงมือ:** regex ข้างบนยึดกับ `from '...'` ซึ่ง**ไม่ครอบคลุม** `vi.mock('...')` — เทสต์ 10 ไฟล์เข้าถึงโมดูลนี้ผ่าน `vi.mock` ทั้งนั้น จึงจะถูกข้ามไปเงียบ ๆ ต้องจับที่ตัวสตริงในเครื่องหมายคำพูดตรง ๆ: `/'((?:\.\.\/)*)(?:\.\/)?session-store\.js'/g`
+
+ตรวจด้วยตาอีกรอบ:
 
 ```bash
 git grep -n "session-store" -- apps/web/src
