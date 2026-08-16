@@ -89,6 +89,43 @@ suite('the till bundle', () => {
     expect(precachedJs.length).toBeGreaterThan(0);
   });
 
+  it('precaches everything the precached code statically imports', () => {
+    /**
+     * THE TEST THAT WOULD HAVE CAUGHT THE OLD BUG.
+     *
+     * Before the split, the till's precache measured a tidy 326 KiB and every
+     * assertion about it passed — while the precached entry chunk opened with
+     * `import{...50 bindings...}from"./office-BOHpDUEF.js"`, a 390 kB chunk
+     * that `globIgnores` deliberately kept OUT of the precache. Pinning the
+     * office to a named chunk had made rollup hoist React, the router and
+     * @pos/shared into it and leave the entry importing them back.
+     *
+     * A tablet with a cold cache and no signal would have asked for that file,
+     * got nothing, and shown a white screen — the exact failure the precache
+     * exists to prevent. The old checks all passed because they asked "is the
+     * entry chunk precached?" and never "can the entry chunk RUN from the
+     * precache?"
+     *
+     * A precache is only worth its size if it is closed under static imports.
+     */
+    const sw = readFileSync(join(TILL_DIST, 'sw.js'), 'utf8');
+    const precached = new Set([...sw.matchAll(/assets\/[^"']+\.js/g)].map((m) => m[0]));
+
+    const missing: string[] = [];
+    for (const url of precached) {
+      const text = readFileSync(join(TILL_DIST, url), 'utf8');
+      // Static imports only. A dynamic import() may legitimately point at
+      // something uncached — that is what "lazy" means — but a static one is
+      // a hard dependency the browser resolves before running a line.
+      for (const [, spec] of text.matchAll(/(?:^|[;}])\s*import\s*[^;]*?from\s*"\.\/([^"]+)"/g)) {
+        const asAsset = `assets/${spec}`;
+        if (!precached.has(asAsset)) missing.push(`${url} -> ${asAsset}`);
+      }
+    }
+
+    expect(missing).toEqual([]);
+  });
+
   it('still ships a service worker at all', () => {
     // The inverse mistake: making the assertions above pass by breaking the
     // PWA, which would take the till offline-capability with it.

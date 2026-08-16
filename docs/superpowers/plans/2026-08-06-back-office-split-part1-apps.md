@@ -24,12 +24,12 @@
 
 **สถานะฐาน วัดไว้ 2026-08-06 (ต้องไม่ต่ำกว่านี้ตอนจบทุก task):**
 
-| ชุด | เทสต์ |
-|---|---|
-| `@pos/shared` | 405 ผ่าน |
-| `@pos/print-agent` | 15 ผ่าน |
-| `@pos/web` | 364 ผ่าน (ในนั้น 112 คือหลังร้าน) |
-| `pnpm typecheck` · `pnpm lint` | ผ่าน ไม่มี warning |
+| ชุด                            | เทสต์                             |
+| ------------------------------ | --------------------------------- |
+| `@pos/shared`                  | 405 ผ่าน                          |
+| `@pos/print-agent`             | 15 ผ่าน                           |
+| `@pos/web`                     | 364 ผ่าน (ในนั้น 112 คือหลังร้าน) |
+| `pnpm typecheck` · `pnpm lint` | ผ่าน ไม่มี warning                |
 
 > `@pos/api` ต้องมี Postgres จึงจะรันได้ (`pnpm db:up && pnpm db:seed:demo`) แผนนี้ไม่แตะโค้ด API เลย ถ้ารันไม่ได้ให้ข้ามและบันทึกไว้
 
@@ -39,22 +39,22 @@
 
 ### สร้างใหม่
 
-| ไฟล์ | รับผิดชอบอะไร |
-|---|---|
-| `packages/web-kit/package.json` | นิยาม `@pos/web-kit` |
-| `packages/web-kit/tsconfig.json` | build เป็น `dist/` พร้อม `.d.ts` |
-| `packages/web-kit/vitest.config.ts` | รันเทสต์ใน jsdom (มี React อยู่ข้างใน) |
-| `packages/web-kit/src/index.ts` | ประตูเดียวของ package |
-| `packages/web-kit/src/http.ts` | `createHttp()` — ตัวยิง request + `ApiResult` |
-| `packages/web-kit/src/http.test.ts` | ทดสอบรูปแบบ request ที่ส่งออกจริง |
-| `packages/web-kit/src/routes.ts` | เส้นทาง URL ทั้งหมดของทั้งสองเว็บ |
-| `packages/web-kit/src/session-store.ts` | `createSessionStore()` — โรงงาน ไม่ใช่ store สำเร็จรูป |
-| `packages/web-kit/src/session-store.test.ts` | ทดสอบว่าไม่มี persistence แล้วยังทำงานถูก |
-| `packages/web-kit/src/business-day.ts` | `createUseBusinessToday()` |
-| `packages/web-kit/src/route-guards.tsx` | `RequireAuth` · `RequirePermission` ที่รับ fallback |
-| `apps/office/*` | แอปหลังร้านทั้งแอป (โครงเหมือน `apps/web` แต่ไม่มี PWA) |
-| `apps/web/src/session.ts` | สร้าง store ของหน้าร้าน พร้อม persistence ที่ผูก IndexedDB |
-| `apps/web/src/bundle-boundary.test.ts` | เขียนใหม่ทั้งไฟล์ (ดู Task 10) |
+| ไฟล์                                         | รับผิดชอบอะไร                                              |
+| -------------------------------------------- | ---------------------------------------------------------- |
+| `packages/web-kit/package.json`              | นิยาม `@pos/web-kit`                                       |
+| `packages/web-kit/tsconfig.json`             | build เป็น `dist/` พร้อม `.d.ts`                           |
+| `packages/web-kit/vitest.config.ts`          | รันเทสต์ใน jsdom (มี React อยู่ข้างใน)                     |
+| `packages/web-kit/src/index.ts`              | ประตูเดียวของ package                                      |
+| `packages/web-kit/src/http.ts`               | `createHttp()` — ตัวยิง request + `ApiResult`              |
+| `packages/web-kit/src/http.test.ts`          | ทดสอบรูปแบบ request ที่ส่งออกจริง                          |
+| `packages/web-kit/src/routes.ts`             | เส้นทาง URL ทั้งหมดของทั้งสองเว็บ                          |
+| `packages/web-kit/src/session-store.ts`      | `createSessionStore()` — โรงงาน ไม่ใช่ store สำเร็จรูป     |
+| `packages/web-kit/src/session-store.test.ts` | ทดสอบว่าไม่มี persistence แล้วยังทำงานถูก                  |
+| `packages/web-kit/src/business-day.ts`       | `createUseBusinessToday()`                                 |
+| `packages/web-kit/src/route-guards.tsx`      | `RequireAuth` · `RequirePermission` ที่รับ fallback        |
+| `apps/office/*`                              | แอปหลังร้านทั้งแอป (โครงเหมือน `apps/web` แต่ไม่มี PWA)    |
+| `apps/web/src/session.ts`                    | สร้าง store ของหน้าร้าน พร้อม persistence ที่ผูก IndexedDB |
+| `apps/web/src/bundle-boundary.test.ts`       | เขียนใหม่ทั้งไฟล์ (ดู Task 10)                             |
 
 ### ย้าย (`git mv`)
 
@@ -72,12 +72,14 @@
 ## Task 1: สร้าง `packages/web-kit` ที่ build ผ่าน
 
 **Files:**
+
 - Create: `packages/web-kit/package.json`
 - Create: `packages/web-kit/tsconfig.json`
 - Create: `packages/web-kit/vitest.config.ts`
 - Create: `packages/web-kit/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: ไม่มี
 - Produces: package ชื่อ `@pos/web-kit` ที่ `pnpm --filter @pos/web-kit build` ผ่าน และ import ได้ด้วย `workspace:*`
 
@@ -224,6 +226,7 @@ git add packages/web-kit pnpm-lock.yaml && git commit -m "chore: scaffold @pos/w
 ## Task 2: ย้ายตัวยิง request เข้า `web-kit`
 
 **Files:**
+
 - Create: `packages/web-kit/src/http.ts`
 - Create: `packages/web-kit/src/http.test.ts`
 - Modify: `packages/web-kit/src/index.ts`
@@ -235,6 +238,7 @@ git add packages/web-kit pnpm-lock.yaml && git commit -m "chore: scaffold @pos/w
 > **หมายเหตุตอนลงมือ:** การแก้ `build:shared` ให้ build `web-kit` ด้วย เดิมอยู่ที่ Task 7 แต่ต้องเลื่อนมาทำที่ Task 3 — `apps/web` พึ่ง `@pos/web-kit` ตั้งแต่ task นี้แล้ว ถ้าไม่แก้ เครื่องที่ clone ใหม่จะรัน `pnpm dev:web` ไม่ผ่านเพราะยังไม่มี `web-kit/dist`
 
 **Interfaces:**
+
 - Consumes: `@pos/web-kit` จาก Task 1
 - Produces:
   - `type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string; offline: boolean; status?: number }`
@@ -298,7 +302,10 @@ describe('createHttp', () => {
 
   it('declares a JSON body when there is one', async () => {
     const fetchMock = stubFetch();
-    await http.request('/orders/o1/lines/l1', { method: 'PATCH', body: JSON.stringify({ qty: 2 }) });
+    await http.request('/orders/o1/lines/l1', {
+      method: 'PATCH',
+      body: JSON.stringify({ qty: 2 }),
+    });
     expect((lastInit(fetchMock).headers as Record<string, string>)['Content-Type']).toBe(
       'application/json',
     );
@@ -360,8 +367,7 @@ Expected: FAIL — `Failed to resolve import "./http.js"`
  */
 
 export type ApiResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: string; offline: boolean; status?: number };
+  { ok: true; data: T } | { ok: false; error: string; offline: boolean; status?: number };
 
 export interface Http {
   readonly baseUrl: string;
@@ -500,12 +506,14 @@ git add -A && git commit -m "refactor: move the HTTP transport into @pos/web-kit
 ## Task 3: ย้าย `routes.ts` เข้า `web-kit`
 
 **Files:**
+
 - Create: `packages/web-kit/src/routes.ts` (ผ่าน `git mv`)
 - Modify: `packages/web-kit/src/index.ts`
 - Delete: `apps/web/src/routes.ts`
 - Modify: ทุกไฟล์ที่ `import { path } from './routes.js'` หรือ `'../../routes.js'`
 
 **Interfaces:**
+
 - Consumes: `@pos/web-kit` จาก Task 2
 - Produces: `export const path` (ตัวเดิมทุกคีย์ ไม่เพิ่มไม่ลด) และ `export const OFFICE_PREFIX = '/office'`
 
@@ -572,6 +580,7 @@ git add -A && git commit -m "refactor: move routes into @pos/web-kit"
 ## Task 4: แปลง `session-store` เป็นโรงงาน
 
 **Files:**
+
 - Create: `packages/web-kit/src/session-store.ts`
 - Create: `packages/web-kit/src/session-store.test.ts`
 - Create: `apps/web/src/session.ts`
@@ -580,11 +589,17 @@ git add -A && git commit -m "refactor: move routes into @pos/web-kit"
 - Modify: ทุกไฟล์ที่ import `session-store.js`
 
 **Interfaces:**
+
 - Consumes: `ApiResult` จาก Task 2
 - Produces:
+
   ```ts
   interface SessionPersistence {
-    save(identity: { user: SessionUser; permissions: Permission[]; branch: MeResponse['branch'] }): Promise<void>;
+    save(identity: {
+      user: SessionUser;
+      permissions: Permission[];
+      branch: MeResponse['branch'];
+    }): Promise<void>;
     load(): Promise<{ user: SessionUser; branch: MeResponse['branch'] } | null>;
     forget(): Promise<void>;
     clearAll(): Promise<void>;
@@ -592,12 +607,33 @@ git add -A && git commit -m "refactor: move routes into @pos/web-kit"
   }
   interface SessionApi {
     me(): Promise<ApiResult<MeResponse>>;
-    login(staffId: string, pin: string, branchId?: string): Promise<ApiResult<{ user: SessionUser }>>;
+    login(
+      staffId: string,
+      pin: string,
+      branchId?: string,
+    ): Promise<ApiResult<{ user: SessionUser }>>;
     logout(): Promise<ApiResult<unknown>>;
   }
-  interface SessionState { status: 'loading' | 'anonymous' | 'authenticated'; user: SessionUser | null; branch: MeResponse['branch'] | null; offline: boolean; refresh(): Promise<void>; login(staffId: string, pin: string, branchId?: string): Promise<{ ok: true } | { ok: false; error: string }>; logout(): Promise<{ ok: true } | { ok: false; error: string }>; can(permission: Permission): boolean }
-  function createSessionStore(deps: { api: SessionApi; persistence?: SessionPersistence }): UseBoundStore<StoreApi<SessionState>>
+  interface SessionState {
+    status: 'loading' | 'anonymous' | 'authenticated';
+    user: SessionUser | null;
+    branch: MeResponse['branch'] | null;
+    offline: boolean;
+    refresh(): Promise<void>;
+    login(
+      staffId: string,
+      pin: string,
+      branchId?: string,
+    ): Promise<{ ok: true } | { ok: false; error: string }>;
+    logout(): Promise<{ ok: true } | { ok: false; error: string }>;
+    can(permission: Permission): boolean;
+  }
+  function createSessionStore(deps: {
+    api: SessionApi;
+    persistence?: SessionPersistence;
+  }): UseBoundStore<StoreApi<SessionState>>;
   ```
+
   `apps/web/src/session.ts` ส่งออก `useSession` ที่ชื่อและรูปร่างเหมือนของเดิมเป๊ะ
 
 - [ ] **Step 1: เขียนเทสต์ที่ยังล้ม**
@@ -624,9 +660,17 @@ const user = { staffId: 's1', branchId: 'b1', role: Role.OWNER, fullName: 'ห�
 // แผนใส่มาแค่ 4 ตัว ของจริงมี 11 (เพิ่ม vatEnabled, vatRateBp, priceIncludesVat,
 // vatEffectiveDate, timezone, dayCutoffHour, promptPayConfigured)
 const branch: MeResponse['branch'] = {
-  id: 'b1', name: 'ร้าน', branchCode: 'HQ', businessType: 'RESTAURANT',
-  vatEnabled: false, vatRateBp: 0, priceIncludesVat: true, vatEffectiveDate: null,
-  timezone: 'Asia/Bangkok', dayCutoffHour: 4, promptPayConfigured: false,
+  id: 'b1',
+  name: 'ร้าน',
+  branchCode: 'HQ',
+  businessType: 'RESTAURANT',
+  vatEnabled: false,
+  vatRateBp: 0,
+  priceIncludesVat: true,
+  vatEffectiveDate: null,
+  timezone: 'Asia/Bangkok',
+  dayCutoffHour: 4,
+  promptPayConfigured: false,
 };
 
 function apiStub(over: Partial<Parameters<typeof createSessionStore>[0]['api']> = {}) {
@@ -944,6 +988,7 @@ git add -A && git commit -m "refactor: turn the session store into a factory wit
 ## Task 5: ย้าย `business-day.ts` และ `route-guards.tsx` เข้า `web-kit`
 
 **Files:**
+
 - Create: `packages/web-kit/src/business-day.ts`
 - Create: `packages/web-kit/src/route-guards.tsx`
 - ~~Delete~~ **เขียนทับ**: `apps/web/src/business-day.ts`, `apps/web/src/route-guards.tsx` — ไม่ได้ลบ ทั้งสองไฟล์เหลืออยู่เป็นตัวห่อบาง ๆ ที่คงชื่อ export เดิม ผู้เรียก 12 ไฟล์จึงไม่ต้องแก้อะไรเลย (Step 4 พูดถูก บรรทัดนี้ในหัวข้อเขียนผิดตอนร่างแผน)
@@ -951,6 +996,7 @@ git add -A && git commit -m "refactor: turn the session store into a factory wit
 - Modify: ไฟล์ที่ import ทั้งสอง (10 และ 2 ไฟล์ตามลำดับ)
 
 **Interfaces:**
+
 - Consumes: `SessionState` จาก Task 4 · `path` จาก Task 3
 - Produces:
   - `function createUseBusinessToday(useSession: UseBoundStore<StoreApi<SessionState>>): () => string`
@@ -1087,7 +1133,11 @@ export function RequireAuth(): React.ReactElement {
 
 export function RequirePermission({ permission }: { permission: Permission }): React.ReactElement {
   return (
-    <SharedRequirePermission useSession={useSession} permission={permission} fallback={path.tables} />
+    <SharedRequirePermission
+      useSession={useSession}
+      permission={permission}
+      fallback={path.tables}
+    />
   );
 }
 ```
@@ -1113,11 +1163,13 @@ git add -A && git commit -m "refactor: move business-day and route guards into @
 ## Task 6: แยก endpoint ของหลังร้านออกจาก `api-client.ts`
 
 **Files:**
+
 - Create: `apps/web/src/api-office.ts` (ที่พักชั่วคราว ย้ายไป `apps/office` ใน Task 9)
 - Modify: `apps/web/src/api-client.ts`
 - Modify: ไฟล์หลังร้านที่เรียก endpoint เหล่านั้น
 
 **Interfaces:**
+
 - Consumes: `http` จาก Task 2
 - Produces: `export const officeApi` ที่มีเมธอดของหลังร้านทั้งหมด โดยชื่อเมธอด **เหมือนเดิมทุกตัว** (เช่น `officeApi.payroll(month)` ไม่ใช่ `officeApi.getPayroll`)
 
@@ -1169,7 +1221,12 @@ branches createBranch updateBranch allBranches
  */
 
 import { createHttp } from '@pos/web-kit';
-import type { MeResponse, SessionUser, BranchChoiceList, StaffPublic /* …และ type ของกอง A ตามที่ tsc ฟ้อง… */ } from '@pos/shared';
+import type {
+  MeResponse,
+  SessionUser,
+  BranchChoiceList,
+  StaffPublic /* …และ type ของกอง A ตามที่ tsc ฟ้อง… */,
+} from '@pos/shared';
 
 const API_BASE = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3001/api';
 const { request, post, put, del } = createHttp(API_BASE);
@@ -1246,11 +1303,13 @@ git add -A && git commit -m "refactor: split the back office endpoints out of th
 ## Task 7: สร้าง `apps/office` ที่ build ผ่าน (ยังไม่มีหน้า)
 
 **Files:**
+
 - Create: `apps/office/package.json` · `tsconfig.json` · `vite.config.ts` · `index.html` · `.env.example`
 - Create: `apps/office/src/main.tsx` · `App.tsx` (ชั่วคราว) · `index.css` · `test-setup.ts`
 - Modify: `package.json` (root) — เพิ่ม `dev:office`
 
 **Interfaces:**
+
 - Consumes: `@pos/web-kit` ทั้งหมด
 - Produces: แอปที่ `pnpm --filter @pos/office build` ผ่าน และเปิดที่ `:5174` ได้
 
@@ -1424,12 +1483,14 @@ git add -A && git commit -m "feat: scaffold the back office as its own app"
 ## Task 8: ย้ายหน้าและเทสต์หลังร้านเข้า `apps/office`
 
 **Files:**
+
 - Move: 35 ไฟล์ (24 ใน `pages/office` · 8 ใน `components/office` · `api-office.ts` · `manage-store.ts` + เทสต์) — **ตอนทำจริงนับได้ 35 ไม่ใช่ 34**
 - Create: `apps/office/src/session.ts` · `business-day.ts` · `route-guards.tsx` · `pages/LoginPage.tsx`
 - Modify: `apps/office/src/App.tsx`
 - Delete: `apps/web/src/office-gate.tsx` + `.test.tsx` · `apps/office/src/pages/routes.tsx`
 
 **Interfaces:**
+
 - Consumes: โครงจาก Task 7 · `officeApi` จาก Task 6
 - Produces: `apps/office` ที่รัน **112 เทสต์ผ่าน** และ `apps/web` เหลือ **248** ผ่าน
 
@@ -1772,6 +1833,7 @@ git rm apps/web/src/office-gate.tsx apps/web/src/office-gate.test.tsx
 ```
 
 ใน `apps/web/src/App.tsx` ลบ:
+
 - `const OfficeRoutes = lazy(() => import('./pages/office/routes.js')...)`
 - `import { OfficeGate } from './office-gate.js';`
 - `<Route path="/office/*" ...>` ทั้งบล็อก
@@ -1805,10 +1867,12 @@ git add -A && git commit -m "feat: move the back office screens into apps/office
 ## Task 9: เขียนเทสต์ขอบเขตชุดใหม่
 
 **Files:**
+
 - Rewrite: `apps/web/src/bundle-boundary.test.ts`
 - Modify: `apps/web/vite.config.ts` — **แผนลืมข้อนี้** ดูหมายเหตุใต้ Step 1
 
 **Interfaces:**
+
 - Consumes: `apps/web/dist` และ `apps/office/dist` ที่ build แล้ว
 - Produces: เทสต์ **6** ตัวที่พิสูจน์ 4 เงื่อนไขใน spec §6.3
 
@@ -2003,10 +2067,12 @@ Proved both directions fail: importing an office page into the till trips
 ## Task 10: วัดผลและอัปเดตเอกสาร
 
 **Files:**
+
 - Modify: `README.md` (หัวข้อ "หน้าร้าน กับ หลังร้าน" · "โครงสร้างโปรเจกต์" · "รันระบบ" · "เทสต์")
 - Modify: `.claude/launch.json`
 
 **Interfaces:**
+
 - Consumes: ผลลัพธ์ทุก task ก่อนหน้า
 - Produces: README ที่ตรงกับความจริงใหม่ และตัวเลขขนาดบันเดิลก่อน/หลัง
 
@@ -2029,17 +2095,37 @@ for(const [name,dir] of [['till','apps/web/dist/assets'],['office','apps/office/
 
 บันทึกตัวเลขไว้ · **ฝั่ง till ต้องน้อยกว่า 296,843 bytes ที่เป็นฐานเดิม** ถ้ามากกว่า แปลว่ามีอะไรข้ามเส้นมา ให้หยุดแล้วหา
 
+> **เกณฑ์นี้ผิด และการหยุดตามที่มันสั่งคือสิ่งที่ทำให้เจอบั๊กเก่า**
+>
+> วัดจริงได้ till = 562,276 bytes · **มากกว่าฐาน 296,843 เกือบเท่าตัว** จึงหยุดแล้วไล่หาตามที่แผนสั่ง
+> วิธีไล่: `git worktree` ที่คอมมิตก่อนแยก แล้ว build มาเทียบของจริง ไม่ใช่เดาจากโค้ด
+>
+> **สิ่งที่เจอ:** เลข 296,843 ไม่เคยเป็น "ขนาดของหน้าร้าน" · การบังคับ `manualChunks` ให้หลังร้าน
+> ไปอยู่ chunk ชื่อ `office` ทำให้ rollup ย้าย React, router และ `@pos/shared` เข้าไปใน chunk นั้น
+> แล้วให้ chunk หน้าร้าน `import` กลับออกมา — ไฟล์ที่ถูก precache ขึ้นต้นด้วย
+> `import{…50 ตัว…}from"./office-BOHpDUEF.js"` ซึ่งเป็นไฟล์ที่ `globIgnores` **ตั้งใจไม่แคช**
+>
+> แปลว่าก่อนแยกแอป **แท็บเล็ตที่แคชว่างแล้วเน็ตหลุดจะจอขาว** — ความล้มเหลวแบบเดียวกับที่ precache
+> มีไว้ป้องกัน · เทสต์เก่าเขียวเพราะถามว่า "chunk หน้าร้านถูกแคชไหม" ไม่เคยถามว่า "ของที่แคชไว้รันเองได้ไหม"
+>
+> เทียบแบบยุติธรรม: build โค้ดเก่าโดยถอด `manualChunks` ออก ได้ entry **569,740 bytes**
+> ตอนนี้ **562,276** — หน้าร้านเล็กลงจริงราว 7 kB ส่วนหลังร้าน 118 kB ย้ายไปคนละเว็บ
+>
+> **เพิ่มเทสต์ข้อที่ 7 ใน `bundle-boundary.test.ts`: precache ต้องปิดตัวเองภายใต้ static import**
+> พิสูจน์แล้วด้วยการรันตรรกะเดียวกันกับ `dist` ของคอมมิตเก่า → รายงาน
+> `index-DG5vfaZX.js -> assets/office-BOHpDUEF.js` ตรงตัว
+
 - [ ] **Step 2: เพิ่ม office เข้า `launch.json`**
 
 `.claude/launch.json` — เพิ่มใน `configurations`:
 
 ```json
-    {
-      "name": "office",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev:office"],
-      "port": 5174
-    }
+{
+  "name": "office",
+  "runtimeExecutable": "pnpm",
+  "runtimeArgs": ["dev:office"],
+  "port": 5174
+}
 ```
 
 - [ ] **Step 3: แก้ README**
@@ -2069,18 +2155,21 @@ git add -A && git commit -m "docs: update README and launch config for the two-a
 
 ## เสร็จแล้วได้อะไร
 
-- `apps/web` เหลือเฉพาะหน้าร้าน · 252 เทสต์ · ยังเป็น PWA ที่ทำงานตอนเน็ตหลุดเหมือนเดิมทุกอย่าง
+- `apps/web` เหลือเฉพาะหน้าร้าน · **249 เทสต์** · ยังเป็น PWA ที่ทำงานตอนเน็ตหลุดเหมือนเดิมทุกอย่าง
 - `apps/office` เป็นแอปของตัวเอง · 112 เทสต์ · ไม่มี service worker ไม่มี IndexedDB
-- `packages/web-kit` · 12 เทสต์
-- บันเดิลที่แท็บเล็ตแคชเล็กลงจากฐานเดิม
-- เทสต์ขอบเขต 5 ตัวที่พิสูจน์แล้วว่าจับได้จริงทั้งสองทาง
+- `packages/web-kit` · 12 เทสต์ · รวมทั้ง workspace **1,121 เทสต์**
+- เทสต์ขอบเขต **7 ตัว** ที่พิสูจน์แล้วว่าจับได้จริงทั้งสามทาง
+- **ของแถมที่ไม่ได้อยู่ในแผน และมีค่ากว่าทุกข้อข้างบน:** เจอว่า precache ของหน้าร้าน**เสียมาตลอด** —
+  ไฟล์ที่แคชไว้ `import` ไฟล์ที่ตั้งใจไม่แคช · แท็บเล็ตแคชว่าง + เน็ตหลุด = จอขาว
+  แยกแอปแล้วหายไปเอง และมีเทสต์เฝ้าไม่ให้กลับมา · เจอเพราะแผนสั่งให้ **"หยุดแล้วหา"** ตอนตัวเลขไม่ตรง
+  ถ้าตอนนั้นเชื่อว่า "โตขึ้นก็คงเพราะ vendor ซ้ำ" แล้วเดินต่อ ก็จะไม่มีใครเจอ
 
 **ยังทำไม่ได้:** เจ้าของยังล็อกอินหลังร้านด้วยอีเมลไม่ได้ (ยังเป็น PIN) และยังไม่ได้ deploy — สองเรื่องนี้อยู่ในแผนที่ 2 และ 3
 
 ## แผนถัดไป
 
-| แผน | เรื่อง | สร้างเมื่อ |
-|---|---|---|
-| 1 | **แยกแอป** | ← เอกสารนี้ |
-| 2 | auth ใหม่ — ตาราง `Session` · อีเมล+รหัสผ่าน · ปิด endpoint ที่เปิดโล่ง · หน้าล็อกอินหลังร้าน | หลังแผน 1 ผ่าน |
-| 3 | deploy — Caddy · VPS · backup ที่ทดสอบกู้คืนแล้ว · CI · แก้เทสต์ flaky | หลังแผน 2 ผ่าน |
+| แผน | เรื่อง                                                                                        | สร้างเมื่อ     |
+| --- | --------------------------------------------------------------------------------------------- | -------------- |
+| 1   | **แยกแอป**                                                                                    | ← เอกสารนี้    |
+| 2   | auth ใหม่ — ตาราง `Session` · อีเมล+รหัสผ่าน · ปิด endpoint ที่เปิดโล่ง · หน้าล็อกอินหลังร้าน | หลังแผน 1 ผ่าน |
+| 3   | deploy — Caddy · VPS · backup ที่ทดสอบกู้คืนแล้ว · CI · แก้เทสต์ flaky                        | หลังแผน 2 ผ่าน |
