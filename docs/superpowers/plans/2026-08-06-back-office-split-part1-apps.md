@@ -946,7 +946,7 @@ git add -A && git commit -m "refactor: turn the session store into a factory wit
 **Files:**
 - Create: `packages/web-kit/src/business-day.ts`
 - Create: `packages/web-kit/src/route-guards.tsx`
-- Delete: `apps/web/src/business-day.ts`, `apps/web/src/route-guards.tsx`
+- ~~Delete~~ **เขียนทับ**: `apps/web/src/business-day.ts`, `apps/web/src/route-guards.tsx` — ไม่ได้ลบ ทั้งสองไฟล์เหลืออยู่เป็นตัวห่อบาง ๆ ที่คงชื่อ export เดิม ผู้เรียก 12 ไฟล์จึงไม่ต้องแก้อะไรเลย (Step 4 พูดถูก บรรทัดนี้ในหัวข้อเขียนผิดตอนร่างแผน)
 - Modify: `packages/web-kit/src/index.ts`
 - Modify: ไฟล์ที่ import ทั้งสอง (10 และ 2 ไฟล์ตามลำดับ)
 

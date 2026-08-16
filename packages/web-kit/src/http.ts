@@ -15,8 +15,7 @@
  */
 
 export type ApiResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: string; offline: boolean; status?: number };
+  { ok: true; data: T } | { ok: false; error: string; offline: boolean; status?: number };
 
 export interface Http {
   readonly baseUrl: string;

@@ -1,11 +1,6 @@
 /**
- * "วันนี้คือวันไหน" in the shop's terms.
- *
- * NOT the browser's calendar day. At 00:30 the shop is still trading yesterday
- * (rule #4), so the answer comes from the branch's timezone and cutoff hour
- * cached in the session. Getting this wrong opens the daily report on an empty
- * tomorrow every night after midnight, and files a late bill under the wrong
- * day's takings.
+ * The till's "what day is it in shop terms" hook — the shared factory bound to
+ * this app's session store. The rule it implements lives in @pos/web-kit.
  *
  * This lives at the top level rather than inside the report shell because the
  * paid-bills screen needs it too, and that screen belongs to the till: a
@@ -15,14 +10,8 @@
  * office onto the tablet.
  */
 
-import { toBusinessDate } from '@pos/shared';
+import { createUseBusinessToday } from '@pos/web-kit';
 import { useSession } from './session.js';
 
 /** Today in the branch's terms: its timezone, its cutoff hour. */
-export function useBusinessToday(): string {
-  const branch = useSession((state) => state.branch);
-  return toBusinessDate(new Date(), {
-    timezone: branch?.timezone ?? 'Asia/Bangkok',
-    dayCutoffHour: branch?.dayCutoffHour ?? 4,
-  });
-}
+export const useBusinessToday = createUseBusinessToday(useSession);

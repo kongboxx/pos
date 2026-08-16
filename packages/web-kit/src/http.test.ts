@@ -50,7 +50,10 @@ describe('createHttp', () => {
 
   it('declares a JSON body when there is one', async () => {
     const fetchMock = stubFetch();
-    await http.request('/orders/o1/lines/l1', { method: 'PATCH', body: JSON.stringify({ qty: 2 }) });
+    await http.request('/orders/o1/lines/l1', {
+      method: 'PATCH',
+      body: JSON.stringify({ qty: 2 }),
+    });
     expect((lastInit(fetchMock).headers as Record<string, string>)['Content-Type']).toBe(
       'application/json',
     );
