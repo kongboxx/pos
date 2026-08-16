@@ -78,8 +78,14 @@ import type {
   VoidLineRequest,
   VoidReportResponse,
 } from '@pos/shared';
+import { createHttp, type ApiResult } from '@pos/web-kit';
 
 const API_BASE = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3001/api';
+
+const http = createHttp(API_BASE);
+const { request, post, put, del } = http;
+
+export type { ApiResult };
 
 /**
  * Where the live socket lives, derived from the same base as everything else.
@@ -95,67 +101,6 @@ export function liveSocketUrl(): string {
   base.pathname = `${base.pathname.replace(/\/$/, '')}/live`;
   return base.toString();
 }
-
-export type ApiResult<T> =
-  { ok: true; data: T } | { ok: false; error: string; offline: boolean; status?: number };
-
-async function request<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
-  try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      credentials: 'include',
-      headers: {
-        // ONLY when there is something to describe.
-        //
-        // Fastify refuses a request that declares application/json and then
-        // sends nothing (FST_ERR_CTP_EMPTY_JSON_BODY, a 400), so a bare DELETE
-        // used to come back rejected. That is how "ลบรายการออกจากบิล" reached
-        // the server as a permanent failure: the line vanished from the tablet,
-        // stayed on the server, and the bill landed in the "ส่งเข้าระบบไม่ได้"
-        // list needing a human — found by watching the outbox during the Step 6
-        // walkthrough, because every test either mocks fetch or calls
-        // app.inject, and neither sets this header.
-        ...(init?.body === undefined ? {} : { 'Content-Type': 'application/json' }),
-        ...init?.headers,
-      },
-    });
-
-    if (!response.ok) {
-      const body: unknown = await response.json().catch(() => null);
-      const message =
-        body && typeof body === 'object' && 'message' in body
-          ? String((body as { message: unknown }).message)
-          : `HTTP ${response.status}`;
-      return { ok: false, error: message, offline: false, status: response.status };
-    }
-
-    return { ok: true, data: (await response.json()) as T };
-  } catch (error) {
-    // fetch only rejects on a genuine network failure — that is our offline signal.
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : 'network error',
-      offline: true,
-    };
-  }
-}
-
-/**
- * POST helper.
- *
- * The empty body is still sent as `{}` rather than omitted. It no longer has to
- * be — `request` only sets the JSON content type when there is a body — but a
- * POST with no body at all reads as an accident to anyone looking at the
- * network tab, and "cancel this empty bill" genuinely is an empty object.
- */
-const post = <T>(path: string, body?: unknown): Promise<ApiResult<T>> =>
-  request<T>(path, { method: 'POST', body: JSON.stringify(body ?? {}) });
-
-/** PUT is a whole-object replace throughout the management API (Step 6). */
-const put = <T>(path: string, body?: unknown): Promise<ApiResult<T>> =>
-  request<T>(path, { method: 'PUT', body: JSON.stringify(body ?? {}) });
-
-const del = <T>(path: string): Promise<ApiResult<T>> => request<T>(path, { method: 'DELETE' });
 
 export interface PrintOptions {
   width: number;

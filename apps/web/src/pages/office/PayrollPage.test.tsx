@@ -156,9 +156,15 @@ describe('a draft', () => {
     await act(async () => {
       fireEvent.blur(days);
     });
-    expect(api.updatePayrollLine).toHaveBeenCalledWith(
-      line().id,
-      expect.objectContaining({ daysWorked: 26 }),
+    // waitFor, not a bare expect: the blur handler saves and then the effect
+    // re-syncs the field from the server's answer. Under a loaded full-suite
+    // run that round trip lands after the assertion would have read the mock,
+    // which made this the one test in the file that failed only in company.
+    await waitFor(() =>
+      expect(api.updatePayrollLine).toHaveBeenCalledWith(
+        line().id,
+        expect.objectContaining({ daysWorked: 26 }),
+      ),
     );
   });
 

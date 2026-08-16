@@ -230,6 +230,7 @@ git add packages/web-kit pnpm-lock.yaml && git commit -m "chore: scaffold @pos/w
 - Modify: `packages/web-kit/package.json` (ถอด `--passWithNoTests` ออกจาก `test` — มีเทสต์จริงแล้ว)
 - Modify: `apps/web/src/api-client.ts:82-165` (ลบ `request`/`post`/`put`/`del` แล้ว import แทน)
 - Modify: `apps/web/package.json` (เพิ่ม `@pos/web-kit`)
+- Modify: `apps/web/src/pages/office/PayrollPage.test.tsx` (ครอบ `waitFor` ที่เทสต์ flaky — เลื่อนมาจากแผนที่ 3 เพราะมันทำให้ `pnpm test` แดงสุ่ม ๆ จนใช้เป็นเกณฑ์ผ่านของ task ถัดไปไม่ได้)
 
 **Interfaces:**
 - Consumes: `@pos/web-kit` จาก Task 1

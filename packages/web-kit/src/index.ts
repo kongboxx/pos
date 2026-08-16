@@ -10,4 +10,4 @@
  * there — see bundle-boundary.test.ts.
  */
 
-export {};
+export * from './http.js';

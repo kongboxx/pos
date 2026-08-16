@@ -109,6 +109,9 @@ importers:
       '@pos/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@pos/web-kit':
+        specifier: workspace:*
+        version: link:../../packages/web-kit
       dexie:
         specifier: ^4.0.11
         version: 4.4.4
