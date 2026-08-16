@@ -21,7 +21,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { formatSatang, type VoidReportResponse } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { useBusinessToday } from '../../business-day.js';
 import { Card, ReportShell, Row } from '../../components/office/ReportShell.js';
 
@@ -39,7 +39,7 @@ export function VoidReportPage(): React.ReactElement {
       return;
     }
     setLoading(true);
-    const result = await api.voidReport(start, end);
+    const result = await officeApi.voidReport(start, end);
     setLoading(false);
     if (result.ok) {
       setReport(result.data);

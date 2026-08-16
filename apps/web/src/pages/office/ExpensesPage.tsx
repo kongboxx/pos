@@ -31,7 +31,7 @@ import {
   type ExpenseListResponse,
   type ExpenseRequest,
 } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { useBusinessToday } from '../../business-day.js';
 import { Card, ReportShell, Row } from '../../components/office/ReportShell.js';
 import { useSession } from '../../session.js';
@@ -58,7 +58,7 @@ export function ExpensesPage(): React.ReactElement {
 
   const load = useCallback(async (on: string) => {
     setLoading(true);
-    const result = await api.expenses(on);
+    const result = await officeApi.expenses(on);
     setLoading(false);
     if (result.ok) {
       setData(result.data);
@@ -88,8 +88,8 @@ export function ExpensesPage(): React.ReactElement {
 
     setBusy(true);
     const result = editingId
-      ? await api.updateExpense(editingId, input)
-      : await api.createExpense(input);
+      ? await officeApi.updateExpense(editingId, input)
+      : await officeApi.createExpense(input);
     setBusy(false);
 
     if (!result.ok) {
@@ -112,7 +112,7 @@ export function ExpensesPage(): React.ReactElement {
   const remove = useCallback(async (expense: ExpenseDto) => {
     if (!globalThis.confirm(`ลบรายจ่าย ${formatSatang(expense.amountSatang)} นี้?`)) return;
     setBusy(true);
-    const result = await api.deleteExpense(expense.id);
+    const result = await officeApi.deleteExpense(expense.id);
     setBusy(false);
     if (result.ok) {
       setData(result.data);

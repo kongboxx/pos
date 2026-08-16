@@ -12,12 +12,12 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { AdminMenuItemDto, MenuAdminResponse } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { useManage } from '../../manage-store.js';
 import { ManageMenuPage } from './ManageMenuPage.js';
 
-vi.mock('../../api-client.js', () => ({
-  api: {
+vi.mock('../../api-office.js', () => ({
+  officeApi: {
     manageMenu: vi.fn(),
     createMenuItem: vi.fn(),
     updateMenuItem: vi.fn(),
@@ -98,7 +98,7 @@ async function show(
   items: AdminMenuItemDto[],
   categories?: MenuAdminResponse['categories'],
 ): Promise<void> {
-  vi.mocked(api.manageMenu).mockResolvedValue({ ok: true, data: menu(items, categories) });
+  vi.mocked(officeApi.manageMenu).mockResolvedValue({ ok: true, data: menu(items, categories) });
   render(
     <MemoryRouter>
       <ManageMenuPage />
@@ -174,7 +174,7 @@ describe('the editor', () => {
   });
 
   it('sends the price in satang, not baht', async () => {
-    vi.mocked(api.updateMenuItem).mockResolvedValue({
+    vi.mocked(officeApi.updateMenuItem).mockResolvedValue({
       ok: true,
       data: {
         menu: menu([item({ priceSatang: 5500 })]),
@@ -193,7 +193,7 @@ describe('the editor', () => {
     });
     await tap(dialog.getByRole('button', { name: 'บันทึก' }));
 
-    expect(api.updateMenuItem).toHaveBeenCalledWith(
+    expect(officeApi.updateMenuItem).toHaveBeenCalledWith(
       'item-1',
       expect.objectContaining({ priceSatang: 5500 }),
     );
@@ -211,7 +211,7 @@ describe('the editor', () => {
     });
     await tap(dialog.getByRole('button', { name: 'บันทึก' }));
 
-    expect(api.updateMenuItem).not.toHaveBeenCalled();
+    expect(officeApi.updateMenuItem).not.toHaveBeenCalled();
     expect(dialog.getByRole('alert')).toHaveTextContent('ราคาไม่ถูกต้อง');
   });
 
@@ -223,7 +223,7 @@ describe('the editor', () => {
     expect(dialog.getByText(/ขายไปแล้ว 12 ครั้ง/)).toBeInTheDocument();
     await tap(dialog.getByRole('button', { name: 'ลบเมนู' }));
     // The first tap only arms it; nothing has been sent yet.
-    expect(api.deleteMenuItem).not.toHaveBeenCalled();
+    expect(officeApi.deleteMenuItem).not.toHaveBeenCalled();
     expect(dialog.getByRole('button', { name: 'ยืนยันลบถาวร' })).toBeInTheDocument();
   });
 });
@@ -232,11 +232,11 @@ describe('arranging the menu', () => {
   it('moves a category without asking the screen to guess a number', async () => {
     // The client never posts a sortOrder — two rows sharing one fall back to
     // sorting by name, so a guessed number moves a category nowhere visible.
-    vi.mocked(api.moveCategory).mockResolvedValue(mutated([]));
+    vi.mocked(officeApi.moveCategory).mockResolvedValue(mutated([]));
     await show([], [category(), category({ id: 'cat-2', name: 'เครื่องดื่ม', icon: null })]);
 
     await tap(screen.getByRole('button', { name: 'เลื่อน เครื่องดื่ม ขึ้น' }));
-    expect(api.moveCategory).toHaveBeenCalledWith('cat-2', 'UP');
+    expect(officeApi.moveCategory).toHaveBeenCalledWith('cat-2', 'UP');
   });
 
   it('will not offer to move the first one up or the last one down', async () => {
@@ -247,17 +247,17 @@ describe('arranging the menu', () => {
   });
 
   it('moves a dish inside its own category', async () => {
-    vi.mocked(api.moveMenuItem).mockResolvedValue(mutated([]));
+    vi.mocked(officeApi.moveMenuItem).mockResolvedValue(mutated([]));
     await show([item(), item({ id: 'item-2', name: 'บะหมี่เกี๊ยว' })]);
 
     await tap(screen.getByRole('button', { name: 'เลื่อน บะหมี่เกี๊ยว ขึ้น' }));
-    expect(api.moveMenuItem).toHaveBeenCalledWith('item-2', 'UP');
+    expect(officeApi.moveMenuItem).toHaveBeenCalledWith('item-2', 'UP');
   });
 });
 
 describe('categories', () => {
   it('adds one without sending a position for it', async () => {
-    vi.mocked(api.createCategory).mockResolvedValue(mutated([]));
+    vi.mocked(officeApi.createCategory).mockResolvedValue(mutated([]));
     await show([]);
 
     await tap(screen.getByRole('button', { name: '+ เพิ่มหมวด' }));
@@ -267,7 +267,7 @@ describe('categories', () => {
     });
     await tap(dialog.getByRole('button', { name: 'บันทึก' }));
 
-    expect(api.createCategory).toHaveBeenCalledWith({
+    expect(officeApi.createCategory).toHaveBeenCalledWith({
       name: 'ของหวาน',
       icon: null,
       subcategories: [],
@@ -282,7 +282,7 @@ describe('categories', () => {
     expect(
       within(screen.getByRole('dialog')).getByRole('button', { name: 'บันทึก' }),
     ).toBeDisabled();
-    expect(api.createCategory).not.toHaveBeenCalled();
+    expect(officeApi.createCategory).not.toHaveBeenCalled();
   });
 
   it('opens on what the category already is, subcategories one per line', async () => {
@@ -299,7 +299,7 @@ describe('categories', () => {
   it('drops blank lines from the subcategory list rather than saving them', async () => {
     // An empty subcategory becomes a filter chip on the till with no name and
     // nothing behind it.
-    vi.mocked(api.updateCategory).mockResolvedValue(mutated([]));
+    vi.mocked(officeApi.updateCategory).mockResolvedValue(mutated([]));
     await show([]);
     await tap(screen.getByRole('button', { name: 'แก้ไขหมวด' }));
 
@@ -311,7 +311,7 @@ describe('categories', () => {
     });
     await tap(dialog.getByRole('button', { name: 'บันทึก' }));
 
-    expect(api.updateCategory).toHaveBeenCalledWith(
+    expect(officeApi.updateCategory).toHaveBeenCalledWith(
       'cat-1',
       expect.objectContaining({ subcategories: ['หมู', 'ไก่'] }),
     );
@@ -327,22 +327,22 @@ describe('categories', () => {
   });
 
   it('needs two taps to delete an empty one', async () => {
-    vi.mocked(api.deleteCategory).mockResolvedValue(mutated([]));
+    vi.mocked(officeApi.deleteCategory).mockResolvedValue(mutated([]));
     await show([]);
     await tap(screen.getByRole('button', { name: 'แก้ไขหมวด' }));
 
     const dialog = within(screen.getByRole('dialog'));
     await tap(dialog.getByRole('button', { name: 'ลบหมวด' }));
-    expect(api.deleteCategory).not.toHaveBeenCalled();
+    expect(officeApi.deleteCategory).not.toHaveBeenCalled();
 
     await tap(dialog.getByRole('button', { name: 'ยืนยันลบหมวด' }));
-    expect(api.deleteCategory).toHaveBeenCalledWith('cat-1');
+    expect(officeApi.deleteCategory).toHaveBeenCalledWith('cat-1');
   });
 });
 
 describe('when the server refuses', () => {
   it('shows the sentence the server sent rather than a generic one', async () => {
-    vi.mocked(api.updateMenuItem).mockResolvedValue({
+    vi.mocked(officeApi.updateMenuItem).mockResolvedValue({
       ok: false,
       error: '"ก๋วยเตี๋ยวหมู" เคยขายไปแล้ว 12 ครั้ง ลบไม่ได้ — ใช้ "เลิกขาย" แทน',
       offline: false,

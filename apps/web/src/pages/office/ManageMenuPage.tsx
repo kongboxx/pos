@@ -35,7 +35,7 @@ import {
   type MoveDirection,
   type RecipeLineInput,
 } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { ManageShell } from '../../components/office/ManageShell.js';
 import { MenuItemEditor } from '../../components/office/MenuItemEditor.js';
 import { useManage } from '../../manage-store.js';
@@ -72,7 +72,7 @@ export function ManageMenuPage(): React.ReactElement {
   const saveItem = useCallback(
     async (input: MenuItemRequest): Promise<boolean> =>
       run(() =>
-        editingItem ? api.updateMenuItem(editingItem.id, input) : api.createMenuItem(input),
+        editingItem ? officeApi.updateMenuItem(editingItem.id, input) : officeApi.createMenuItem(input),
       ),
     [run, editingItem],
   );
@@ -80,14 +80,14 @@ export function ManageMenuPage(): React.ReactElement {
   const saveRecipe = useCallback(
     async (lines: RecipeLineInput[]): Promise<boolean> => {
       if (!editingItem) return false;
-      return run(() => api.saveMenuItemRecipe(editingItem.id, { lines }));
+      return run(() => officeApi.saveMenuItemRecipe(editingItem.id, { lines }));
     },
     [run, editingItem],
   );
 
   const removeItem = useCallback(async (): Promise<boolean> => {
     if (!editingItem) return false;
-    const ok = await run(() => api.deleteMenuItem(editingItem.id));
+    const ok = await run(() => officeApi.deleteMenuItem(editingItem.id));
     if (ok) setEditing(null);
     return ok;
   }, [run, editingItem]);
@@ -97,7 +97,7 @@ export function ManageMenuPage(): React.ReactElement {
       const target = editingCategory;
       if (!target) return;
       const ok = await run(() =>
-        target === 'NEW' ? api.createCategory(input) : api.updateCategory(target.id, input),
+        target === 'NEW' ? officeApi.createCategory(input) : officeApi.updateCategory(target.id, input),
       );
       if (ok) setEditingCategory(null);
     },
@@ -107,7 +107,7 @@ export function ManageMenuPage(): React.ReactElement {
   const removeCategory = useCallback(async (): Promise<void> => {
     const target = editingCategory;
     if (!target || target === 'NEW') return;
-    const ok = await run(() => api.deleteCategory(target.id));
+    const ok = await run(() => officeApi.deleteCategory(target.id));
     if (ok) {
       // The list it was selected from no longer contains it, and `current`
       // falls back to the first category on its own.
@@ -133,7 +133,7 @@ export function ManageMenuPage(): React.ReactElement {
                     busy={busy}
                     isFirst={index === 0}
                     isLast={index === categories.length - 1}
-                    onMove={(direction) => void run(() => api.moveCategory(category.id, direction))}
+                    onMove={(direction) => void run(() => officeApi.moveCategory(category.id, direction))}
                   />
                   <button
                     type="button"
@@ -200,7 +200,7 @@ export function ManageMenuPage(): React.ReactElement {
                 category={current}
                 busy={busy}
                 onEdit={(item) => setEditing({ item })}
-                onMove={(item, direction) => void run(() => api.moveMenuItem(item.id, direction))}
+                onMove={(item, direction) => void run(() => officeApi.moveMenuItem(item.id, direction))}
               />
             ) : null}
           </div>

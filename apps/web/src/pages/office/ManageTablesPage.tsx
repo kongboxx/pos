@@ -37,7 +37,7 @@ import {
   type TableQrResponse,
   type TableRequest,
 } from '@pos/shared';
-import { api, type ApiResult } from '../../api-client.js';
+import { officeApi, type ApiResult } from '../../api-office.js';
 import { ManageShell } from '../../components/office/ManageShell.js';
 
 export function ManageTablesPage(): React.ReactElement {
@@ -50,7 +50,7 @@ export function ManageTablesPage(): React.ReactElement {
   const [editing, setEditing] = useState<TableQrDto | 'NEW' | null>(null);
 
   const load = useCallback(async () => {
-    const result = await api.manageTables();
+    const result = await officeApi.manageTables();
     if (result.ok) setData(result.data);
     else setError(result.error);
   }, []);
@@ -100,7 +100,7 @@ export function ManageTablesPage(): React.ReactElement {
             <button
               type="button"
               disabled={busy}
-              onClick={() => void run(() => api.setQrOrdering(!data.orderingEnabled))}
+              onClick={() => void run(() => officeApi.setQrOrdering(!data.orderingEnabled))}
               className={`btn h-14 px-8 text-lg text-white disabled:opacity-40 ${
                 data.orderingEnabled
                   ? 'bg-slate-600 hover:bg-slate-500'
@@ -144,11 +144,11 @@ export function ManageTablesPage(): React.ReactElement {
                       isFirst={index === 0}
                       isLast={index === group.tables.length - 1}
                       confirmingDelete={confirmingDeleteId === table.id}
-                      onMove={(direction) => void run(() => api.moveTable(table.id, direction))}
+                      onMove={(direction) => void run(() => officeApi.moveTable(table.id, direction))}
                       onEdit={() => setEditing(table)}
                       onToggleActive={() =>
                         void run(() =>
-                          api.updateTable(table.id, {
+                          officeApi.updateTable(table.id, {
                             name: table.name,
                             zone: table.zone,
                             seats: table.seats,
@@ -160,7 +160,7 @@ export function ManageTablesPage(): React.ReactElement {
                       onCancelDelete={() => setConfirmingDeleteId(null)}
                       onDelete={() => {
                         setConfirmingDeleteId(null);
-                        void run(() => api.deleteTable(table.id));
+                        void run(() => officeApi.deleteTable(table.id));
                       }}
                     />
                   ))}
@@ -188,7 +188,7 @@ export function ManageTablesPage(): React.ReactElement {
                 onCancelRotate={() => setConfirmingQrId(null)}
                 onRotate={() => {
                   setConfirmingQrId(null);
-                  void run(() => api.rotateTableQr(table.id));
+                  void run(() => officeApi.rotateTableQr(table.id));
                 }}
               />
             ))}
@@ -203,7 +203,7 @@ export function ManageTablesPage(): React.ReactElement {
           onClose={() => setEditing(null)}
           onSave={async (input) => {
             const ok = await run(() =>
-              editing === 'NEW' ? api.createTable(input) : api.updateTable(editing.id, input),
+              editing === 'NEW' ? officeApi.createTable(input) : officeApi.updateTable(editing.id, input),
             );
             if (ok) setEditing(null);
           }}

@@ -24,7 +24,7 @@ import {
   type DeductionListResponse,
   type StaffListResponse,
 } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { useBusinessToday } from '../../business-day.js';
 import { StaffShell } from '../../components/office/StaffShell.js';
 import { useSession } from '../../session.js';
@@ -49,7 +49,7 @@ export function DeductionsPage(): React.ReactElement {
 
   const load = useCallback(async (on: string) => {
     setLoading(true);
-    const result = await api.deductions(on);
+    const result = await officeApi.deductions(on);
     setLoading(false);
     if (result.ok) {
       setData(result.data);
@@ -65,7 +65,7 @@ export function DeductionsPage(): React.ReactElement {
 
   useEffect(() => {
     void (async () => {
-      const result = await api.staff();
+      const result = await officeApi.staff();
       if (result.ok) setRoster(result.data);
     })();
   }, []);
@@ -82,7 +82,7 @@ export function DeductionsPage(): React.ReactElement {
     }
 
     setBusy(true);
-    const result = await api.createDeduction({
+    const result = await officeApi.createDeduction({
       staffId,
       date,
       type,
@@ -109,7 +109,7 @@ export function DeductionsPage(): React.ReactElement {
     if (!globalThis.confirm(`ลบรายการหัก ${formatSatang(row.amountSatang)} ของ ${row.staffName}?`))
       return;
     setBusy(true);
-    const result = await api.deleteDeduction(row.id);
+    const result = await officeApi.deleteDeduction(row.id);
     setBusy(false);
     if (result.ok) {
       setData(result.data);

@@ -21,7 +21,7 @@ import {
   type AdminIngredientDto,
   type IngredientRequest,
 } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { ManageShell } from '../../components/office/ManageShell.js';
 import { useManage } from '../../manage-store.js';
 
@@ -80,7 +80,7 @@ export function ManageIngredientsPage(): React.ReactElement {
       isActive: true,
     };
     const ok = await run(() =>
-      editingId ? api.updateIngredient(editingId, input) : api.createIngredient(input),
+      editingId ? officeApi.updateIngredient(editingId, input) : officeApi.createIngredient(input),
     );
     if (ok) {
       setEditingId(null);
@@ -91,7 +91,7 @@ export function ManageIngredientsPage(): React.ReactElement {
 
   const remove = useCallback(
     async (ingredient: AdminIngredientDto) => {
-      const ok = await run(() => api.deleteIngredient(ingredient.id));
+      const ok = await run(() => officeApi.deleteIngredient(ingredient.id));
       if (ok && editingId === ingredient.id) setEditingId(null);
     },
     [run, editingId],

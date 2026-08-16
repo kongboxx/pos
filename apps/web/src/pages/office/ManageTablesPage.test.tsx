@@ -19,11 +19,11 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { TableQrDto, TableQrResponse } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { ManageTablesPage } from './ManageTablesPage.js';
 
-vi.mock('../../api-client.js', () => ({
-  api: {
+vi.mock('../../api-office.js', () => ({
+  officeApi: {
     manageTables: vi.fn(),
     createTable: vi.fn(),
     updateTable: vi.fn(),
@@ -68,7 +68,7 @@ function rowFor(name: string): HTMLElement {
 }
 
 async function show(data: TableQrResponse = tables()): Promise<void> {
-  vi.mocked(api.manageTables).mockResolvedValue({ ok: true, data });
+  vi.mocked(officeApi.manageTables).mockResolvedValue({ ok: true, data });
   render(
     <MemoryRouter>
       <ManageTablesPage />
@@ -112,7 +112,7 @@ describe('the floor plan list', () => {
   it('moves a table by asking the server, not by reordering on screen', async () => {
     // The order has to survive a reload, and two tables can share a sortOrder
     // after a seed — so the swap is the server's job.
-    vi.mocked(api.moveTable).mockResolvedValue({ ok: true, data: tables() });
+    vi.mocked(officeApi.moveTable).mockResolvedValue({ ok: true, data: tables() });
     await show(
       tables({
         tables: [table({ name: 'A1' }), table({ id: SECOND_ID, name: 'A2', sortOrder: 1 })],
@@ -120,7 +120,7 @@ describe('the floor plan list', () => {
     );
 
     await tap(screen.getByRole('button', { name: 'เลื่อน A2 ขึ้น' }));
-    expect(api.moveTable).toHaveBeenCalledWith(SECOND_ID, 'UP');
+    expect(officeApi.moveTable).toHaveBeenCalledWith(SECOND_ID, 'UP');
   });
 
   it('keeps a retired table in the list and takes its sticker away', async () => {
@@ -153,22 +153,22 @@ describe('retiring and deleting', () => {
   });
 
   it('takes two taps to delete a table nothing points at', async () => {
-    vi.mocked(api.deleteTable).mockResolvedValue({ ok: true, data: tables({ tables: [] }) });
+    vi.mocked(officeApi.deleteTable).mockResolvedValue({ ok: true, data: tables({ tables: [] }) });
     await show();
 
     await tap(screen.getByRole('button', { name: 'ลบ' }));
-    expect(api.deleteTable).not.toHaveBeenCalled();
+    expect(officeApi.deleteTable).not.toHaveBeenCalled();
 
     await tap(screen.getByRole('button', { name: 'ยืนยันลบ' }));
-    expect(api.deleteTable).toHaveBeenCalledWith(TABLE_ID);
+    expect(officeApi.deleteTable).toHaveBeenCalledWith(TABLE_ID);
   });
 
   it('sends the opposite of the current state when retiring', async () => {
-    vi.mocked(api.updateTable).mockResolvedValue({ ok: true, data: tables() });
+    vi.mocked(officeApi.updateTable).mockResolvedValue({ ok: true, data: tables() });
     await show();
 
     await tap(screen.getByRole('button', { name: 'ปิดใช้' }));
-    expect(api.updateTable).toHaveBeenCalledWith(TABLE_ID, {
+    expect(officeApi.updateTable).toHaveBeenCalledWith(TABLE_ID, {
       name: 'A1',
       zone: 'ในร้าน',
       seats: 4,
@@ -179,7 +179,7 @@ describe('retiring and deleting', () => {
 
 describe('adding and editing', () => {
   it('adds a table with an empty zone as null, not as an empty string', async () => {
-    vi.mocked(api.createTable).mockResolvedValue({ ok: true, data: tables() });
+    vi.mocked(officeApi.createTable).mockResolvedValue({ ok: true, data: tables() });
     await show();
     await tap(screen.getByRole('button', { name: '+ เพิ่มโต๊ะ' }));
 
@@ -189,7 +189,7 @@ describe('adding and editing', () => {
     });
     await tap(within(dialog).getByRole('button', { name: 'บันทึก' }));
 
-    expect(api.createTable).toHaveBeenCalledWith({
+    expect(officeApi.createTable).toHaveBeenCalledWith({
       name: 'C1',
       zone: null,
       seats: 4,
@@ -208,7 +208,7 @@ describe('adding and editing', () => {
   it('editing does not flip the active switch by accident', async () => {
     // ปิดใช้ is a separate button because it is the one that has to check for
     // an open bill. Renaming a retired table must leave it retired.
-    vi.mocked(api.updateTable).mockResolvedValue({ ok: true, data: tables() });
+    vi.mocked(officeApi.updateTable).mockResolvedValue({ ok: true, data: tables() });
     await show(tables({ tables: [table({ isActive: false })] }));
     await tap(screen.getByRole('button', { name: 'แก้ไข' }));
 
@@ -220,7 +220,7 @@ describe('adding and editing', () => {
     });
     await tap(within(dialog).getByRole('button', { name: 'บันทึก' }));
 
-    expect(api.updateTable).toHaveBeenCalledWith(TABLE_ID, {
+    expect(officeApi.updateTable).toHaveBeenCalledWith(TABLE_ID, {
       name: 'A01',
       zone: 'ในร้าน',
       seats: 4,
@@ -236,7 +236,7 @@ describe('adding and editing', () => {
   });
 
   it('shows what the server said when a name is taken', async () => {
-    vi.mocked(api.createTable).mockResolvedValue({
+    vi.mocked(officeApi.createTable).mockResolvedValue({
       ok: false,
       error: 'มีโต๊ะชื่อ "A1" อยู่แล้ว ใช้ชื่ออื่น',
       offline: false,
@@ -270,17 +270,17 @@ describe('the printable code', () => {
 
 describe('rotating a sticker', () => {
   it('takes two taps and says what it will break', async () => {
-    vi.mocked(api.rotateTableQr).mockResolvedValue({ ok: true, data: tables() });
+    vi.mocked(officeApi.rotateTableQr).mockResolvedValue({ ok: true, data: tables() });
     await show();
 
     await tap(screen.getByRole('button', { name: 'เปลี่ยนรหัส' }));
     // The first tap only arms it: this kills a sticker that is physically
     // stuck to a table, so a mis-tap costs a trip with a printer.
-    expect(api.rotateTableQr).not.toHaveBeenCalled();
+    expect(officeApi.rotateTableQr).not.toHaveBeenCalled();
     expect(screen.getByText('สติกเกอร์เดิมของโต๊ะนี้จะใช้ไม่ได้ทันที')).toBeInTheDocument();
 
     await tap(screen.getByRole('button', { name: 'ยืนยันเปลี่ยน' }));
-    expect(api.rotateTableQr).toHaveBeenCalledWith(TABLE_ID);
+    expect(officeApi.rotateTableQr).toHaveBeenCalledWith(TABLE_ID);
   });
 });
 
@@ -292,14 +292,14 @@ describe('the off switch', () => {
   });
 
   it('sends the opposite of what is set now', async () => {
-    vi.mocked(api.setQrOrdering).mockResolvedValue({
+    vi.mocked(officeApi.setQrOrdering).mockResolvedValue({
       ok: true,
       data: tables({ orderingEnabled: false }),
     });
     await show();
 
     await tap(screen.getByRole('button', { name: 'ปิดรับ' }));
-    expect(api.setQrOrdering).toHaveBeenCalledWith(false);
+    expect(officeApi.setQrOrdering).toHaveBeenCalledWith(false);
 
     // ...and the screen then reads the other way round.
     expect(await screen.findByRole('button', { name: 'เปิดรับ' })).toBeInTheDocument();
@@ -307,7 +307,7 @@ describe('the off switch', () => {
   });
 
   it('shows what the server said when it refuses', async () => {
-    vi.mocked(api.setQrOrdering).mockResolvedValue({
+    vi.mocked(officeApi.setQrOrdering).mockResolvedValue({
       ok: false,
       error: 'บัญชีนี้ไม่มีสิทธิ์จัดการโต๊ะ',
       offline: false,

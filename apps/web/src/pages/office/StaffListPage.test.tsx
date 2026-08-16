@@ -17,13 +17,13 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { toBusinessDate, type StaffDto, type StaffListResponse } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { StaffListPage } from './StaffListPage.js';
 
 const TODAY = toBusinessDate(new Date(), { timezone: 'Asia/Bangkok', dayCutoffHour: 4 });
 
-vi.mock('../../api-client.js', () => ({
-  api: {
+vi.mock('../../api-office.js', () => ({
+  officeApi: {
     staff: vi.fn(),
     createStaff: vi.fn(),
     updateStaff: vi.fn(),
@@ -72,7 +72,7 @@ function roster(staff: StaffDto[] = [person()], today = TODAY): StaffListRespons
 }
 
 async function show(data: StaffListResponse = roster()): Promise<void> {
-  vi.mocked(api.staff).mockResolvedValue({ ok: true, data });
+  vi.mocked(officeApi.staff).mockResolvedValue({ ok: true, data });
   render(
     <MemoryRouter>
       <StaffListPage />
@@ -159,7 +159,7 @@ describe('editing', () => {
   });
 
   it('sends the wage as satang, not baht', async () => {
-    vi.mocked(api.updateStaff).mockResolvedValue({ ok: true, data: roster() });
+    vi.mocked(officeApi.updateStaff).mockResolvedValue({ ok: true, data: roster() });
     await show();
     await tap(screen.getByRole('button', { name: 'แก้ไข' }));
 
@@ -170,7 +170,7 @@ describe('editing', () => {
     });
     await tap(screen.getByRole('button', { name: 'บันทึกการแก้ไข' }));
 
-    expect(api.updateStaff).toHaveBeenCalledWith(
+    expect(officeApi.updateStaff).toHaveBeenCalledWith(
       person().id,
       expect.objectContaining({ wageRateSatang: 50_000 }),
     );

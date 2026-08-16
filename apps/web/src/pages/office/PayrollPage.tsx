@@ -27,7 +27,7 @@ import {
   type PayrollLineDto,
   type PayrollResponse,
 } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { useBusinessToday } from '../../business-day.js';
 import { PayslipDialog } from '../../components/office/PayslipDialog.js';
 import { StaffShell } from '../../components/office/StaffShell.js';
@@ -49,7 +49,7 @@ export function PayrollPage(): React.ReactElement {
 
   const load = useCallback(async (on: string) => {
     setLoading(true);
-    const result = await api.payroll(on);
+    const result = await officeApi.payroll(on);
     setLoading(false);
     if (result.ok) {
       setData(result.data);
@@ -64,7 +64,7 @@ export function PayrollPage(): React.ReactElement {
   }, [month, load]);
 
   const apply = useCallback(
-    (result: Awaited<ReturnType<typeof api.payroll>>, message: string | null) => {
+    (result: Awaited<ReturnType<typeof officeApi.payroll>>, message: string | null) => {
       if (!result.ok) {
         setError(result.offline ? 'ต่อเซิร์ฟเวอร์ไม่ได้ — ทำรายการไม่สำเร็จ' : result.error);
         return;
@@ -78,7 +78,7 @@ export function PayrollPage(): React.ReactElement {
 
   const run = useCallback(
     async (
-      call: () => Promise<Awaited<ReturnType<typeof api.payroll>>>,
+      call: () => Promise<Awaited<ReturnType<typeof officeApi.payroll>>>,
       message: string | null,
     ) => {
       setBusy(true);
@@ -105,7 +105,7 @@ export function PayrollPage(): React.ReactElement {
       )
     )
       return;
-    await run(() => api.payPayroll(month, { paidDate, paidBy: 'CASH' }), 'จ่ายเงินเดือนเรียบร้อย');
+    await run(() => officeApi.payPayroll(month, { paidDate, paidBy: 'CASH' }), 'จ่ายเงินเดือนเรียบร้อย');
   }, [month, total, paidDate, run]);
 
   const unpay = useCallback(async () => {
@@ -117,7 +117,7 @@ export function PayrollPage(): React.ReactElement {
       )
     )
       return;
-    await run(() => api.unpayPayroll(month), 'ยกเลิกการจ่ายแล้ว กลับเป็นร่าง');
+    await run(() => officeApi.unpayPayroll(month), 'ยกเลิกการจ่ายแล้ว กลับเป็นร่าง');
   }, [month, run]);
 
   const controls = (
@@ -152,7 +152,7 @@ export function PayrollPage(): React.ReactElement {
             <button
               type="button"
               disabled={busy}
-              onClick={() => void run(() => api.generatePayroll(month), 'สร้างรอบเงินเดือนแล้ว')}
+              onClick={() => void run(() => officeApi.generatePayroll(month), 'สร้างรอบเงินเดือนแล้ว')}
               className="btn mt-4 h-12 bg-brand-600 px-8 text-white hover:bg-brand-500 disabled:opacity-50"
             >
               สร้างรอบเงินเดือน {month}
@@ -220,7 +220,7 @@ export function PayrollPage(): React.ReactElement {
                   busy={busy}
                   onSave={(daysWorked, bonusSatang) =>
                     run(
-                      () => api.updatePayrollLine(line.id, { daysWorked, bonusSatang, note: null }),
+                      () => officeApi.updatePayrollLine(line.id, { daysWorked, bonusSatang, note: null }),
                       null,
                     )
                   }
@@ -274,7 +274,7 @@ export function PayrollPage(): React.ReactElement {
                     type="button"
                     disabled={busy}
                     onClick={() =>
-                      void run(() => api.generatePayroll(month), 'ดึงรายชื่อพนักงานใหม่แล้ว')
+                      void run(() => officeApi.generatePayroll(month), 'ดึงรายชื่อพนักงานใหม่แล้ว')
                     }
                     className="btn h-12 bg-slate-100 px-6 text-slate-700 hover:bg-slate-200 disabled:opacity-50"
                   >
@@ -285,7 +285,7 @@ export function PayrollPage(): React.ReactElement {
                     disabled={busy}
                     onClick={() => {
                       if (!globalThis.confirm(`ลบร่างเงินเดือนเดือน ${month} ทิ้ง?`)) return;
-                      void run(() => api.discardPayroll(month), 'ลบร่างแล้ว');
+                      void run(() => officeApi.discardPayroll(month), 'ลบร่างแล้ว');
                     }}
                     className="btn h-12 bg-slate-100 px-6 text-slate-700 hover:bg-slate-200 disabled:opacity-50"
                   >

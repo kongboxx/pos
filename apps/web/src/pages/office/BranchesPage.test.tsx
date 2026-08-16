@@ -17,11 +17,11 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { BranchDto, BranchListResponse } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { BranchesPage } from './BranchesPage.js';
 
-vi.mock('../../api-client.js', () => ({
-  api: { branches: vi.fn(), createBranch: vi.fn(), updateBranch: vi.fn() },
+vi.mock('../../api-office.js', () => ({
+  officeApi: { branches: vi.fn(), createBranch: vi.fn(), updateBranch: vi.fn() },
 }));
 
 vi.mock('../../session.js', () => ({
@@ -61,7 +61,7 @@ function list(over: Partial<BranchDto> = {}, today = '2026-07-30'): BranchListRe
 }
 
 async function show(data: BranchListResponse = list()): Promise<void> {
-  vi.mocked(api.branches).mockResolvedValue({ ok: true, data });
+  vi.mocked(officeApi.branches).mockResolvedValue({ ok: true, data });
   render(
     <MemoryRouter>
       <BranchesPage />
@@ -111,7 +111,7 @@ describe('the settings form', () => {
 
   it('sends the rate in basis points and the rent in satang', async () => {
     const user = userEvent.setup();
-    vi.mocked(api.updateBranch).mockResolvedValue({ ok: true, data: branch() });
+    vi.mocked(officeApi.updateBranch).mockResolvedValue({ ok: true, data: branch() });
     await show();
 
     await user.click(screen.getByLabelText('คิด VAT'));
@@ -119,8 +119,8 @@ describe('the settings form', () => {
     await user.type(screen.getByLabelText(/เลขประจำตัวผู้เสียภาษีของร้าน/), '0105558123451');
     await user.click(screen.getByRole('button', { name: 'บันทึก' }));
 
-    await waitFor(() => expect(api.updateBranch).toHaveBeenCalled());
-    const [, payload] = vi.mocked(api.updateBranch).mock.calls[0] as [
+    await waitFor(() => expect(officeApi.updateBranch).toHaveBeenCalled());
+    const [, payload] = vi.mocked(officeApi.updateBranch).mock.calls[0] as [
       string,
       Record<string, unknown>,
     ];
@@ -138,7 +138,7 @@ describe('the settings form', () => {
     await user.click(screen.getByRole('button', { name: 'บันทึก' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/เลขประจำตัวผู้เสียภาษี/);
-    expect(api.updateBranch).not.toHaveBeenCalled();
+    expect(officeApi.updateBranch).not.toHaveBeenCalled();
   });
 });
 
@@ -157,7 +157,7 @@ describe('adding a shop', () => {
 
   it('uppercases the branch code on the way out', async () => {
     const user = userEvent.setup();
-    vi.mocked(api.createBranch).mockResolvedValue({ ok: true, data: branch({ id: 'other' }) });
+    vi.mocked(officeApi.createBranch).mockResolvedValue({ ok: true, data: branch({ id: 'other' }) });
     await show();
     await user.click(screen.getByRole('button', { name: '+ เพิ่มสาขา' }));
 
@@ -168,8 +168,8 @@ describe('adding a shop', () => {
     await user.type(within(dialog).getByLabelText(/PIN 4 หลัก/), '2468');
     await user.click(within(dialog).getByRole('button', { name: 'เปิดสาขา' }));
 
-    await waitFor(() => expect(api.createBranch).toHaveBeenCalled());
-    const [payload] = vi.mocked(api.createBranch).mock.calls[0] as [Record<string, unknown>];
+    await waitFor(() => expect(officeApi.createBranch).toHaveBeenCalled());
+    const [payload] = vi.mocked(officeApi.createBranch).mock.calls[0] as [Record<string, unknown>];
     expect(payload['branchCode']).toBe('BR02');
     expect(payload['ownerPin']).toBe('2468');
   });

@@ -30,7 +30,7 @@ import {
   type BranchListResponse,
   type BranchSettingsRequest,
 } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { Card } from '../../components/office/ReportShell.js';
 import { SettingsShell } from '../../components/office/SettingsShell.js';
 
@@ -51,7 +51,7 @@ export function BranchesPage(): React.ReactElement {
 
   const load = useCallback(async (keepId?: string) => {
     setLoading(true);
-    const result = await api.branches();
+    const result = await officeApi.branches();
     setLoading(false);
     if (!result.ok) {
       setError(result.offline ? 'ต่อเซิร์ฟเวอร์ไม่ได้ — หน้านี้ต้องออนไลน์' : result.error);
@@ -88,7 +88,7 @@ export function BranchesPage(): React.ReactElement {
     }
 
     setBusy(true);
-    const result = await api.updateBranch(selected.id, parsed.data);
+    const result = await officeApi.updateBranch(selected.id, parsed.data);
     setBusy(false);
     if (!result.ok) {
       setError(result.error);
@@ -380,7 +380,7 @@ function AddBranchDialog({
 
   const submit = async (): Promise<void> => {
     setBusy(true);
-    const result = await api.createBranch({
+    const result = await officeApi.createBranch({
       name: name.trim(),
       branchCode: branchCode.trim().toUpperCase(),
       businessType: 'RESTAURANT',

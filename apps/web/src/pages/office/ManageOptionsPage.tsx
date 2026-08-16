@@ -19,7 +19,7 @@ import {
   type ModifierRequest,
   type RecipeLineInput,
 } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { ManageShell } from '../../components/office/ManageShell.js';
 import { RecipeEditor } from '../../components/office/RecipeEditor.js';
 import { useManage } from '../../manage-store.js';
@@ -48,7 +48,7 @@ export function ManageOptionsPage(): React.ReactElement {
     const priceDeltaSatang = parseBahtToSatang(newPrice === '' ? '0' : newPrice);
     if (priceDeltaSatang === null) return;
     const ok = await run(() =>
-      api.createModifier(current.id, {
+      officeApi.createModifier(current.id, {
         name: newName.trim(),
         priceDeltaSatang,
         isDefault: false,
@@ -65,7 +65,7 @@ export function ManageOptionsPage(): React.ReactElement {
   const updateModifier = useCallback(
     (modifier: AdminModifierDto, changes: Partial<ModifierRequest>): Promise<boolean> =>
       run(() =>
-        api.updateModifier(modifier.id, {
+        officeApi.updateModifier(modifier.id, {
           name: modifier.name,
           priceDeltaSatang: modifier.priceDeltaSatang,
           isDefault: modifier.isDefault,
@@ -79,7 +79,7 @@ export function ManageOptionsPage(): React.ReactElement {
 
   const saveRecipe = useCallback(
     (modifierId: string, lines: RecipeLineInput[]): Promise<boolean> =>
-      run(() => api.saveModifierRecipe(modifierId, { lines })),
+      run(() => officeApi.saveModifierRecipe(modifierId, { lines })),
     [run],
   );
 
@@ -166,7 +166,7 @@ export function ManageOptionsPage(): React.ReactElement {
                         {modifier.soldCount === 0 ? (
                           <button
                             type="button"
-                            onClick={() => void run(() => api.deleteModifier(modifier.id))}
+                            onClick={() => void run(() => officeApi.deleteModifier(modifier.id))}
                             disabled={busy}
                             className="btn h-11 bg-red-50 px-4 text-red-800 hover:bg-red-100 disabled:opacity-50"
                           >

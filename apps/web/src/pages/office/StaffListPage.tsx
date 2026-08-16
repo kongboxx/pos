@@ -30,7 +30,7 @@ import {
   type StaffListResponse,
   type StaffRequest,
 } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { ExpiryBadge, expiryWarningText, StaffShell } from '../../components/office/StaffShell.js';
 import { useBusinessToday } from '../../business-day.js';
 import { useSession } from '../../session.js';
@@ -70,7 +70,7 @@ export function StaffListPage(): React.ReactElement {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const result = await api.staff();
+    const result = await officeApi.staff();
     setLoading(false);
     if (result.ok) {
       setData(result.data);
@@ -84,7 +84,7 @@ export function StaffListPage(): React.ReactElement {
     void load();
   }, [load]);
 
-  const apply = useCallback((result: Awaited<ReturnType<typeof api.staff>>, message: string) => {
+  const apply = useCallback((result: Awaited<ReturnType<typeof officeApi.staff>>, message: string) => {
     if (!result.ok) {
       setError(result.offline ? 'ต่อเซิร์ฟเวอร์ไม่ได้ — บันทึกไม่สำเร็จ' : result.error);
       return false;
@@ -122,8 +122,8 @@ export function StaffListPage(): React.ReactElement {
 
     setBusy(true);
     const result = editingId
-      ? await api.updateStaff(editingId, input)
-      : await api.createStaff({ ...input, pin: draft.pin });
+      ? await officeApi.updateStaff(editingId, input)
+      : await officeApi.createStaff({ ...input, pin: draft.pin });
     setBusy(false);
 
     if (apply(result, editingId ? 'บันทึกการแก้ไขแล้ว' : `เพิ่ม ${input.fullName} แล้ว`)) {
@@ -164,7 +164,7 @@ export function StaffListPage(): React.ReactElement {
       );
       if (!pin) return;
       setBusy(true);
-      const result = await api.setStaffPin(staff.id, pin.trim());
+      const result = await officeApi.setStaffPin(staff.id, pin.trim());
       setBusy(false);
       apply(result, `ตั้ง PIN ใหม่ให้ ${staff.nickname ?? staff.fullName} แล้ว`);
     },
@@ -175,7 +175,7 @@ export function StaffListPage(): React.ReactElement {
     async (staff: StaffDto) => {
       if (!globalThis.confirm(`ลบ ${staff.fullName} ออกจากระบบ?`)) return;
       setBusy(true);
-      const result = await api.deleteStaff(staff.id);
+      const result = await officeApi.deleteStaff(staff.id);
       setBusy(false);
       apply(result, `ลบ ${staff.fullName} แล้ว`);
     },

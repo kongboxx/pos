@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { formatSatang, type AllBranchesResponse } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { useBusinessToday } from '../../business-day.js';
 import { SettingsShell } from '../../components/office/SettingsShell.js';
 
@@ -25,7 +25,7 @@ export function AllBranchesPage(): React.ReactElement {
 
   const load = useCallback(async (on: string) => {
     setLoading(true);
-    const result = await api.allBranches(on);
+    const result = await officeApi.allBranches(on);
     setLoading(false);
     if (result.ok) {
       setData(result.data);

@@ -12,11 +12,11 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { DeductionDto, DeductionListResponse, StaffListResponse } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { DeductionsPage } from './DeductionsPage.js';
 
-vi.mock('../../api-client.js', () => ({
-  api: {
+vi.mock('../../api-office.js', () => ({
+  officeApi: {
     deductions: vi.fn(),
     createDeduction: vi.fn(),
     deleteDeduction: vi.fn(),
@@ -91,8 +91,8 @@ const roster: StaffListResponse = {
 };
 
 async function show(data: DeductionListResponse = list()): Promise<void> {
-  vi.mocked(api.deductions).mockResolvedValue({ ok: true, data });
-  vi.mocked(api.staff).mockResolvedValue({ ok: true, data: roster });
+  vi.mocked(officeApi.deductions).mockResolvedValue({ ok: true, data });
+  vi.mocked(officeApi.staff).mockResolvedValue({ ok: true, data: roster });
   render(
     <MemoryRouter>
       <DeductionsPage />
@@ -117,7 +117,7 @@ describe('recording one', () => {
   it('sends satang with the reason as a key, not as Thai text', async () => {
     // "มาสาย", "สาย" and "เข้างานสาย" typed freehand are three things nothing
     // can add together at the end of the month.
-    vi.mocked(api.createDeduction).mockResolvedValue({ ok: true, data: list() });
+    vi.mocked(officeApi.createDeduction).mockResolvedValue({ ok: true, data: list() });
     await show();
 
     await act(async () => {
@@ -126,13 +126,13 @@ describe('recording one', () => {
     });
     await tap(screen.getByRole('button', { name: 'บันทึก' }));
 
-    expect(api.createDeduction).toHaveBeenCalledWith(
+    expect(officeApi.createDeduction).toHaveBeenCalledWith(
       expect.objectContaining({ staffId: STAFF_ID, amountSatang: 30_000, type: 'LATE' }),
     );
   });
 
   it('keeps the person, the date and the reason for the next row', async () => {
-    vi.mocked(api.createDeduction).mockResolvedValue({ ok: true, data: list() });
+    vi.mocked(officeApi.createDeduction).mockResolvedValue({ ok: true, data: list() });
     await show();
 
     await tap(screen.getByRole('button', { name: /ขาดงาน/ }));
@@ -154,7 +154,7 @@ describe('recording one', () => {
     });
     await tap(screen.getByRole('button', { name: 'บันทึก' }));
 
-    expect(api.createDeduction).not.toHaveBeenCalled();
+    expect(officeApi.createDeduction).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent('เลือกพนักงานก่อน');
   });
 });

@@ -16,15 +16,15 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { toBusinessDate, type ExpenseListResponse } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { ExpensesPage } from './ExpensesPage.js';
 
 /** Computed the same way the screen does, so this asserts "today in the
  *  branch's terms" rather than freezing the clock around the whole file. */
 const TODAY = toBusinessDate(new Date(), { timezone: 'Asia/Bangkok', dayCutoffHour: 4 });
 
-vi.mock('../../api-client.js', () => ({
-  api: {
+vi.mock('../../api-office.js', () => ({
+  officeApi: {
     expenses: vi.fn(),
     createExpense: vi.fn(),
     updateExpense: vi.fn(),
@@ -63,7 +63,7 @@ function list(overrides: Partial<ExpenseListResponse> = {}): ExpenseListResponse
 }
 
 async function show(data: ExpenseListResponse = list()): Promise<void> {
-  vi.mocked(api.expenses).mockResolvedValue({ ok: true, data });
+  vi.mocked(officeApi.expenses).mockResolvedValue({ ok: true, data });
   render(
     <MemoryRouter>
       <ExpensesPage />
@@ -110,19 +110,19 @@ describe('entering a receipt', () => {
   });
 
   it('sends satang, not baht', async () => {
-    vi.mocked(api.createExpense).mockResolvedValue({ ok: true, data: list() });
+    vi.mocked(officeApi.createExpense).mockResolvedValue({ ok: true, data: list() });
     await show();
 
     await type('จำนวนเงิน (บาท)', '800.50');
     await tap(screen.getByRole('button', { name: 'บันทึก' }));
 
-    expect(api.createExpense).toHaveBeenCalledWith(
+    expect(officeApi.createExpense).toHaveBeenCalledWith(
       expect.objectContaining({ amountSatang: 80_050, category: 'INGREDIENT' }),
     );
   });
 
   it('keeps the category and the date for the next row', async () => {
-    vi.mocked(api.createExpense).mockResolvedValue({ ok: true, data: list() });
+    vi.mocked(officeApi.createExpense).mockResolvedValue({ ok: true, data: list() });
     await show();
 
     await tap(screen.getByRole('button', { name: /ค่าแรง/ }));
@@ -142,12 +142,12 @@ describe('entering a receipt', () => {
     await type('จำนวนเงิน (บาท)', 'แปดร้อย');
     await tap(screen.getByRole('button', { name: 'บันทึก' }));
 
-    expect(api.createExpense).not.toHaveBeenCalled();
+    expect(officeApi.createExpense).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent('ใส่จำนวนเงินให้ถูกต้อง');
   });
 
   it('follows a row moved into another month rather than losing it', async () => {
-    vi.mocked(api.updateExpense).mockResolvedValue({
+    vi.mocked(officeApi.updateExpense).mockResolvedValue({
       ok: true,
       data: list({ yearMonth: '2026-08', expenses: [], totalSatang: 0, byCategory: [] }),
     });

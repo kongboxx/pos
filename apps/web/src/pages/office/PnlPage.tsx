@@ -21,7 +21,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { expenseCategoryLabel, formatSatang, yearMonthOf, type PnlResponse } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { useBusinessToday } from '../../business-day.js';
 import { Card, formatBp, ReportShell, Row } from '../../components/office/ReportShell.js';
 
@@ -34,7 +34,7 @@ export function PnlPage(): React.ReactElement {
 
   const load = useCallback(async (on: string) => {
     setLoading(true);
-    const result = await api.pnl(on);
+    const result = await officeApi.pnl(on);
     setLoading(false);
     if (result.ok) {
       setPnl(result.data);

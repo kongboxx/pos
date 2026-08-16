@@ -17,7 +17,7 @@
 
 import { create } from 'zustand';
 import type { MenuAdminMutationResponse, MenuAdminResponse } from '@pos/shared';
-import { api, type ApiResult } from './api-client.js';
+import { officeApi, type ApiResult } from './api-office.js';
 
 interface ManageState {
   menu: MenuAdminResponse | null;
@@ -42,7 +42,7 @@ export const useManage = create<ManageState>((set) => ({
 
   load: async () => {
     set({ loading: true });
-    const result = await api.manageMenu();
+    const result = await officeApi.manageMenu();
     if (result.ok) set({ menu: result.data, loading: false, error: null });
     else set({ loading: false, error: result.error });
   },

@@ -9,10 +9,10 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MenuAdminResponse } from '@pos/shared';
-import { api } from './api-client.js';
+import { officeApi } from './api-office.js';
 import { describeRecalculation, useManage } from './manage-store.js';
 
-vi.mock('./api-client.js', () => ({ api: { manageMenu: vi.fn() } }));
+vi.mock('./api-office.js', () => ({ officeApi: { manageMenu: vi.fn() } }));
 
 const EMPTY: MenuAdminResponse = {
   categories: [],
@@ -88,7 +88,7 @@ describe('run', () => {
 
 describe('load', () => {
   it('keeps the error when the menu cannot be fetched', async () => {
-    vi.mocked(api.manageMenu).mockResolvedValue({
+    vi.mocked(officeApi.manageMenu).mockResolvedValue({
       ok: false,
       error: 'เชื่อมต่อไม่ได้',
       offline: true,

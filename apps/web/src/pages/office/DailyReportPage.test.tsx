@@ -11,10 +11,10 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { DailyReportResponse } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { DailyReportPage } from './DailyReportPage.js';
 
-vi.mock('../../api-client.js', () => ({ api: { dailyReport: vi.fn() } }));
+vi.mock('../../api-office.js', () => ({ officeApi: { dailyReport: vi.fn() } }));
 
 vi.mock('../../session.js', () => ({
   useSession: (selector: (state: unknown) => unknown) =>
@@ -54,7 +54,7 @@ function report(overrides: Partial<DailyReportResponse> = {}): DailyReportRespon
 }
 
 async function show(data: DailyReportResponse = report()): Promise<void> {
-  vi.mocked(api.dailyReport).mockResolvedValue({ ok: true, data });
+  vi.mocked(officeApi.dailyReport).mockResolvedValue({ ok: true, data });
   render(
     <MemoryRouter>
       <DailyReportPage />
@@ -115,7 +115,7 @@ describe('dishes with no recipe', () => {
 
 describe('when the server cannot be reached', () => {
   it('says the report needs a connection rather than showing nothing', async () => {
-    vi.mocked(api.dailyReport).mockResolvedValue({
+    vi.mocked(officeApi.dailyReport).mockResolvedValue({
       ok: false,
       error: 'fetch failed',
       offline: true,

@@ -24,7 +24,7 @@ import {
   expenseCategoryLabel,
   type DailyReportResponse,
 } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { useBusinessToday } from '../../business-day.js';
 import { Card, formatBp, ReportShell, Row } from '../../components/office/ReportShell.js';
 
@@ -37,7 +37,7 @@ export function DailyReportPage(): React.ReactElement {
 
   const load = useCallback(async (on: string) => {
     setLoading(true);
-    const result = await api.dailyReport(on);
+    const result = await officeApi.dailyReport(on);
     setLoading(false);
     if (result.ok) {
       setReport(result.data);

@@ -17,11 +17,11 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { PayrollLineDto, PayrollResponse } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { PayrollPage } from './PayrollPage.js';
 
-vi.mock('../../api-client.js', () => ({
-  api: {
+vi.mock('../../api-office.js', () => ({
+  officeApi: {
     payroll: vi.fn(),
     generatePayroll: vi.fn(),
     updatePayrollLine: vi.fn(),
@@ -78,7 +78,7 @@ function run(over: Partial<PayrollResponse> = {}): PayrollResponse {
 }
 
 async function show(data: PayrollResponse = run()): Promise<void> {
-  vi.mocked(api.payroll).mockResolvedValue({ ok: true, data });
+  vi.mocked(officeApi.payroll).mockResolvedValue({ ok: true, data });
   render(
     <MemoryRouter>
       <PayrollPage />
@@ -119,7 +119,7 @@ afterEach(() => {
 
 describe('a month with no run yet', () => {
   it('offers to build one instead of showing an empty table', async () => {
-    vi.mocked(api.payroll).mockResolvedValue({ ok: true, data: run({ payroll: null }) });
+    vi.mocked(officeApi.payroll).mockResolvedValue({ ok: true, data: run({ payroll: null }) });
     render(
       <MemoryRouter>
         <PayrollPage />
@@ -144,14 +144,14 @@ describe('a draft', () => {
   it('commits a day count on blur, not on every keystroke', async () => {
     // Each save re-totals the whole run on the server. Firing that per digit
     // would make "24" briefly mean two days' pay on screen.
-    vi.mocked(api.updatePayrollLine).mockResolvedValue({ ok: true, data: run() });
+    vi.mocked(officeApi.updatePayrollLine).mockResolvedValue({ ok: true, data: run() });
     await show();
 
     const days = screen.getByLabelText('วันทำงานของ อ่อง');
     await act(async () => {
       fireEvent.change(days, { target: { value: '26' } });
     });
-    expect(api.updatePayrollLine).not.toHaveBeenCalled();
+    expect(officeApi.updatePayrollLine).not.toHaveBeenCalled();
 
     await act(async () => {
       fireEvent.blur(days);
@@ -161,7 +161,7 @@ describe('a draft', () => {
     // run that round trip lands after the assertion would have read the mock,
     // which made this the one test in the file that failed only in company.
     await waitFor(() =>
-      expect(api.updatePayrollLine).toHaveBeenCalledWith(
+      expect(officeApi.updatePayrollLine).toHaveBeenCalledWith(
         line().id,
         expect.objectContaining({ daysWorked: 26 }),
       ),
@@ -173,7 +173,7 @@ describe('a draft', () => {
     await act(async () => {
       fireEvent.blur(screen.getByLabelText('วันทำงานของ อ่อง'));
     });
-    expect(api.updatePayrollLine).not.toHaveBeenCalled();
+    expect(officeApi.updatePayrollLine).not.toHaveBeenCalled();
   });
 
   it('warns about wages already typed in by hand, before the pay button', async () => {
@@ -200,7 +200,7 @@ describe('a draft', () => {
 
   it('sends the date the money actually leaves the till', async () => {
     // The P&L is cash basis: a July payroll paid on 3 August is an August cost.
-    vi.mocked(api.payPayroll).mockResolvedValue({ ok: true, data: run() });
+    vi.mocked(officeApi.payPayroll).mockResolvedValue({ ok: true, data: run() });
     await show();
 
     await act(async () => {
@@ -210,7 +210,7 @@ describe('a draft', () => {
     });
     await tap(screen.getByRole('button', { name: /จ่ายเงินเดือน/ }));
 
-    expect(api.payPayroll).toHaveBeenCalledWith(
+    expect(officeApi.payPayroll).toHaveBeenCalledWith(
       '2026-07',
       expect.objectContaining({ paidDate: '2026-08-03' }),
     );
@@ -236,11 +236,11 @@ describe('a paid run', () => {
   });
 
   it('offers an explicit undo rather than leaving the database as the only fix', async () => {
-    vi.mocked(api.unpayPayroll).mockResolvedValue({ ok: true, data: run() });
+    vi.mocked(officeApi.unpayPayroll).mockResolvedValue({ ok: true, data: run() });
     await show(paid());
 
     await tap(screen.getByRole('button', { name: 'ยกเลิกการจ่าย' }));
-    expect(api.unpayPayroll).toHaveBeenCalledWith('2026-07');
+    expect(officeApi.unpayPayroll).toHaveBeenCalledWith('2026-07');
   });
 });
 

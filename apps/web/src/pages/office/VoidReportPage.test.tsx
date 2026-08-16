@@ -12,10 +12,10 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { VoidReportResponse } from '@pos/shared';
-import { api } from '../../api-client.js';
+import { officeApi } from '../../api-office.js';
 import { VoidReportPage } from './VoidReportPage.js';
 
-vi.mock('../../api-client.js', () => ({ api: { voidReport: vi.fn() } }));
+vi.mock('../../api-office.js', () => ({ officeApi: { voidReport: vi.fn() } }));
 
 vi.mock('../../session.js', () => ({
   useSession: (selector: (state: unknown) => unknown) =>
@@ -82,7 +82,7 @@ function report(overrides: Partial<VoidReportResponse> = {}): VoidReportResponse
 }
 
 async function show(data: VoidReportResponse = report()): Promise<void> {
-  vi.mocked(api.voidReport).mockResolvedValue({ ok: true, data });
+  vi.mocked(officeApi.voidReport).mockResolvedValue({ ok: true, data });
   render(
     <MemoryRouter>
       <VoidReportPage />
@@ -133,7 +133,7 @@ describe('an empty range', () => {
 describe('a range that runs backwards', () => {
   it('is refused on the screen without asking the server', async () => {
     await show();
-    vi.mocked(api.voidReport).mockClear();
+    vi.mocked(officeApi.voidReport).mockClear();
 
     const from = screen.getByLabelText('ตั้งแต่');
     // The input's own max would normally stop this; a typed date can still get
@@ -144,6 +144,6 @@ describe('a range that runs backwards', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
     expect(screen.getByRole('alert')).toHaveTextContent('วันเริ่มต้องไม่เกินวันสิ้นสุด');
-    expect(api.voidReport).not.toHaveBeenCalled();
+    expect(officeApi.voidReport).not.toHaveBeenCalled();
   });
 });
