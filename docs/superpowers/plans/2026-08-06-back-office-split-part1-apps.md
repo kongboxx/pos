@@ -1300,6 +1300,8 @@ git add -A && git commit -m "refactor: split the back office endpoints out of th
 
 `qrcode.react` ตามมาด้วยเพราะ `ManageTablesPage` พิมพ์สติกเกอร์ QR
 
+`test` ใส่ `--passWithNoTests` ชั่วคราวด้วยเหตุผลเดียวกับ Task 1 — task นี้ยังไม่มีไฟล์เทสต์ **Task 8 ถอดออก** ตอนเทสต์หลังร้าน 112 ตัวย้ายเข้ามา
+
 - [ ] **Step 2: `tsconfig.json`**
 
 `apps/office/tsconfig.json` — เหมือน `apps/web` แต่ตัด `vite-plugin-pwa/client` ออก:

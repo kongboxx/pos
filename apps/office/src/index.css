@@ -1,0 +1,98 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens for the whole app.
+ *
+ * The shop runs on landscape Android tablets with wet fingers, so the base
+ * font is larger than a normal web app and every interactive target is at
+ * least 44x44px. Numbers use tabular-nums everywhere so a column of prices
+ * lines up and a cashier can scan it without reading each digit.
+ */
+@theme {
+  --font-sans: 'Noto Sans Thai', 'Sarabun', system-ui, -apple-system, sans-serif;
+
+  /* Minimum touch target — never make a button smaller than this. */
+  --spacing-touch: 2.75rem; /* 44px */
+
+  --color-brand-50: oklch(0.97 0.02 250);
+  --color-brand-500: oklch(0.55 0.18 250);
+  --color-brand-600: oklch(0.48 0.18 250);
+  --color-brand-900: oklch(0.25 0.08 250);
+
+  /* Kitchen display timers: <3 min normal, 3-5 min warning, >5 min late. */
+  --color-kds-ok: oklch(0.72 0.17 145);
+  --color-kds-warn: oklch(0.8 0.17 85);
+  --color-kds-late: oklch(0.62 0.22 25);
+}
+
+@layer base {
+  html {
+    /* Tablet at arm's length: 18px base reads better than 16px. */
+    font-size: 18px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+    font-family: var(--font-sans);
+    /* No pull-to-refresh: a downward swipe on the order list must not reload. */
+    overscroll-behavior: none;
+  }
+
+  /* Money and quantities must never jitter as digits change. */
+  .tnum,
+  [data-money] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  /* No text selection on controls — a long press should not pop a menu up. */
+  button,
+  [role='button'] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+@layer components {
+  /* Base for every tappable control in the app. */
+  .btn {
+    @apply inline-flex min-h-[var(--spacing-touch)] min-w-[var(--spacing-touch)]
+      items-center justify-center rounded-xl px-4 font-medium
+      transition-colors active:scale-[0.98];
+  }
+
+  /* Text/date/select inputs. Same 44px floor as .btn — a field that cannot be
+     tapped accurately is as broken as a button that cannot. */
+  .input {
+    @apply h-12 w-full rounded-xl border border-slate-300 px-3 text-lg;
+  }
+}
+
+/*
+ * Printing (Step 9).
+ *
+ * Only the payslip is ever printed from a browser here — receipts and kitchen
+ * tickets go to the thermal printer over the LAN, not through this. So the rule
+ * is blunt: hide everything, then show the one element that asked to be printed
+ * and lift it out of the app's scrolling layout, which otherwise clips it to
+ * the height of a screen and prints one page of nothing.
+ */
+@media print {
+  .print-hide,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  .print-sheet {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    background: #fff;
+    color: #000;
+  }
+}
