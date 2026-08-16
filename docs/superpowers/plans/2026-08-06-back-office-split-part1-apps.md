@@ -104,7 +104,7 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
   "dependencies": {
@@ -127,6 +127,8 @@
   }
 }
 ```
+
+`--passWithNoTests` เป็นของชั่วคราวเพราะ task นี้ยังไม่มีไฟล์เทสต์ และ `vitest run` ออกด้วย exit 1 เมื่อไม่เจอเทสต์ ซึ่งจะทำให้ `pnpm test` ทั้ง workspace แดง ผิดกฎ "เขียวครบทุกขั้น" · **Task 2 ถอดธงนี้ออก** ตอนที่เทสต์ตัวจริงตัวแรกเข้ามา ปล่อยไว้ถาวรไม่ได้เพราะจะกลบกรณีที่ `include` พังแล้วเทสต์ทั้ง package หายเงียบ ๆ
 
 React/react-router/zustand เป็น `peerDependencies` เพราะทั้งสองแอปต้องใช้ **อินสแตนซ์เดียวกัน** — ถ้า `web-kit` ลากสำเนา React ของตัวเองมา hook จะพังแบบที่ error บอกว่า "invalid hook call" โดยไม่ชี้ว่ามาจากไหน
 
@@ -225,6 +227,7 @@ git add packages/web-kit pnpm-lock.yaml && git commit -m "chore: scaffold @pos/w
 - Create: `packages/web-kit/src/http.ts`
 - Create: `packages/web-kit/src/http.test.ts`
 - Modify: `packages/web-kit/src/index.ts`
+- Modify: `packages/web-kit/package.json` (ถอด `--passWithNoTests` ออกจาก `test` — มีเทสต์จริงแล้ว)
 - Modify: `apps/web/src/api-client.ts:82-165` (ลบ `request`/`post`/`put`/`del` แล้ว import แทน)
 - Modify: `apps/web/package.json` (เพิ่ม `@pos/web-kit`)
 
