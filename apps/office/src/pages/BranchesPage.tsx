@@ -30,9 +30,9 @@ import {
   type BranchListResponse,
   type BranchSettingsRequest,
 } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
-import { Card } from '../../components/office/ReportShell.js';
-import { SettingsShell } from '../../components/office/SettingsShell.js';
+import { officeApi } from '../api-office.js';
+import { Card } from '../components/ReportShell.js';
+import { SettingsShell } from '../components/SettingsShell.js';
 
 type Form = Omit<BranchSettingsRequest, 'rentPerMonthSatang' | 'vatRateBp'> & {
   rentBaht: string;

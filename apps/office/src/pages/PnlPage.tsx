@@ -21,9 +21,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { expenseCategoryLabel, formatSatang, yearMonthOf, type PnlResponse } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
-import { useBusinessToday } from '../../business-day.js';
-import { Card, formatBp, ReportShell, Row } from '../../components/office/ReportShell.js';
+import { officeApi } from '../api-office.js';
+import { useBusinessToday } from '../business-day.js';
+import { Card, formatBp, ReportShell, Row } from '../components/ReportShell.js';
 
 export function PnlPage(): React.ReactElement {
   const today = useBusinessToday();

@@ -1424,14 +1424,17 @@ git add -A && git commit -m "feat: scaffold the back office as its own app"
 ## Task 8: ย้ายหน้าและเทสต์หลังร้านเข้า `apps/office`
 
 **Files:**
-- Move: 34 ไฟล์ (ดูรายการใน File Structure)
+- Move: 35 ไฟล์ (24 ใน `pages/office` · 8 ใน `components/office` · `api-office.ts` · `manage-store.ts` + เทสต์) — **ตอนทำจริงนับได้ 35 ไม่ใช่ 34**
 - Create: `apps/office/src/session.ts` · `business-day.ts` · `route-guards.tsx` · `pages/LoginPage.tsx`
 - Modify: `apps/office/src/App.tsx`
-- Delete: `apps/web/src/office-gate.tsx` + `.test.tsx`
+- Delete: `apps/web/src/office-gate.tsx` + `.test.tsx` · `apps/office/src/pages/routes.tsx`
 
 **Interfaces:**
 - Consumes: โครงจาก Task 7 · `officeApi` จาก Task 6
-- Produces: `apps/office` ที่รัน **112 เทสต์ผ่าน** และ `apps/web` เหลือ 252 ผ่าน
+- Produces: `apps/office` ที่รัน **112 เทสต์ผ่าน** และ `apps/web` เหลือ **248** ผ่าน
+
+> **แก้ตัวเลข:** แผนเขียนไว้ว่า `apps/web` จะเหลือ 252 (364 − 112) ซึ่งลืมว่า
+> `office-gate.test.tsx` ที่ลบใน Step 7 มี **4 เทสต์** ของตัวเอง · 364 − 112 − 4 = **248**
 
 - [ ] **Step 1: ย้ายไฟล์**
 
@@ -1468,6 +1471,17 @@ for(const f of files){
 }
 "
 ```
+
+> **บั๊กในสคริปต์นี้ เจอตอนรันจริง — สองจุด**
+>
+> 1. บรรทัด `components/office/` แค่ตัดคำว่า `office/` ทิ้ง แต่ **ไม่ได้ปรับความลึก** ที่จับไว้ใน `$1`
+>    หน้าที่อยู่ใน `pages/` เขียน `'../../components/office/ReportShell.js'` ผลลัพธ์จะกลายเป็น
+>    `'../../components/ReportShell.js'` ซึ่งชี้ออกไปนอก `src` · ต้องแทนด้วย prefix ที่คำนวณจาก depth
+>    เหมือนที่ทำกับโมดูลใน `local`
+> 2. `depth` คำนวณผิดฐาน — path จาก `git ls-files` คือ `apps/office/src/pages/X.tsx` (5 ส่วน)
+>    จึงต้องเป็น `f.split('/').length - 4` ไม่ใช่ `- 3`
+>
+> สคริปต์ที่ใช้จริงแก้ทั้งสองจุดแล้ว patch ไป 26 จาก 38 ไฟล์
 
 - [ ] **Step 3: สร้างตัวเชื่อมสามไฟล์**
 
@@ -1726,8 +1740,20 @@ export function App(): React.ReactElement {
 ```
 
 ```bash
-git rm apps/office/src/pages/routes.tsx
+git rm -f apps/office/src/pages/routes.tsx
 ```
+
+> **สามอย่างที่แผนตกไป เจอตอนเทียบกับ `routes.tsx` ตัวจริง**
+>
+> 1. **redirect ระดับกลุ่มหายไปสามเส้น** — ของเดิมมี `reports` → `daily` · `staff` → `people` ·
+>    `settings` → `branches` · ถ้าตัดทิ้งตามแผน คนที่พิมพ์ `/office/reports` จะตกไปที่ catch-all
+>    แล้วเด้งไปหน้าเมนู ไม่ใช่หน้ารายงานประจำวัน · **นี่คือพฤติกรรมที่หายไป ไม่ใช่การย้าย** จึงคงไว้
+> 2. **`<Route index>` ใช้กับ path แบบเต็มไม่ได้** — route ลูกทุกตัวตอนนี้เป็น absolute path
+>    (`/office/menu`) ไม่ใช่ relative แล้ว จึงไม่มี "index ของอะไร" ให้ชี้ · ใช้ `path="/"` แทน
+> 3. **`/login` ต้องเด้งคนที่ล็อกอินแล้วออก** — ของหน้าร้านทำไว้ (`status === 'authenticated'`
+>    → ไปหน้าโต๊ะ) ถ้าไม่ทำ คนที่มีเซสชันอยู่แล้วกดปุ่ม back จะเห็นฟอร์ม PIN เปล่า ๆ
+>
+> และเพิ่มหน้าจอ `loading` ให้เหมือนหน้าร้าน (ข้อความกลางจอ) แทนที่จะเป็น `<p>` ลอย ๆ
 
 - [ ] **Step 6: รันเทสต์ของหลังร้าน**
 
@@ -1760,9 +1786,13 @@ git rm apps/web/src/office-gate.tsx apps/web/src/office-gate.test.tsx
 pnpm typecheck && pnpm test
 ```
 
-Expected: `@pos/web` **252 ผ่าน** (364 − 112) · `@pos/office` 112 ผ่าน · `@pos/web-kit` 12 ผ่าน · `@pos/shared` 405 ผ่าน
+Expected: `@pos/web` **248 ผ่าน** (242 ผ่าน + 6 ข้าม) · `@pos/office` 112 ผ่าน · `@pos/web-kit` 12 ผ่าน · `@pos/shared` 405 ผ่าน · `@pos/api` 328 ผ่าน · `@pos/print-agent` 15 ผ่าน
 
 > `bundle-boundary.test.ts` จะล้มตรงนี้ เพราะมันยังตรวจของที่ไม่มีแล้ว — Task 9 เขียนใหม่ · ถ้าอยากให้ขั้นนี้เขียว ให้ `it.skip` ไว้ทั้งไฟล์ก่อนแล้วปลดใน Task 9
+>
+> **ทำจริง:** เปลี่ยนเป็น `describe.skip` ทั้ง 4 บล็อก (6 เทสต์) พร้อมหมายเหตุหัวไฟล์ว่า
+> ข้ามไว้ **commit เดียว** และ commit ถัดไปเขียนใหม่ · จงใจเขียนเหตุผลไว้ในไฟล์ เพราะเทสต์ที่ถูก
+> ข้ามโดยไม่มีคำอธิบายคือเทสต์ที่ไม่มีวันกลับมา
 
 - [ ] **Step 9: Commit**
 

@@ -12,11 +12,11 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { AdminMenuItemDto, MenuAdminResponse } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
-import { useManage } from '../../manage-store.js';
+import { officeApi } from '../api-office.js';
+import { useManage } from '../manage-store.js';
 import { ManageMenuPage } from './ManageMenuPage.js';
 
-vi.mock('../../api-office.js', () => ({
+vi.mock('../api-office.js', () => ({
   officeApi: {
     manageMenu: vi.fn(),
     createMenuItem: vi.fn(),

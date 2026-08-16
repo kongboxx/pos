@@ -37,8 +37,8 @@ import {
   type TableQrResponse,
   type TableRequest,
 } from '@pos/shared';
-import { officeApi, type ApiResult } from '../../api-office.js';
-import { ManageShell } from '../../components/office/ManageShell.js';
+import { officeApi, type ApiResult } from '../api-office.js';
+import { ManageShell } from '../components/ManageShell.js';
 
 export function ManageTablesPage(): React.ReactElement {
   const [data, setData] = useState<TableQrResponse | null>(null);
@@ -144,7 +144,9 @@ export function ManageTablesPage(): React.ReactElement {
                       isFirst={index === 0}
                       isLast={index === group.tables.length - 1}
                       confirmingDelete={confirmingDeleteId === table.id}
-                      onMove={(direction) => void run(() => officeApi.moveTable(table.id, direction))}
+                      onMove={(direction) =>
+                        void run(() => officeApi.moveTable(table.id, direction))
+                      }
                       onEdit={() => setEditing(table)}
                       onToggleActive={() =>
                         void run(() =>
@@ -203,7 +205,9 @@ export function ManageTablesPage(): React.ReactElement {
           onClose={() => setEditing(null)}
           onSave={async (input) => {
             const ok = await run(() =>
-              editing === 'NEW' ? officeApi.createTable(input) : officeApi.updateTable(editing.id, input),
+              editing === 'NEW'
+                ? officeApi.createTable(input)
+                : officeApi.updateTable(editing.id, input),
             );
             if (ok) setEditing(null);
           }}

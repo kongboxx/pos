@@ -24,10 +24,10 @@ import {
   type DeductionListResponse,
   type StaffListResponse,
 } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
-import { useBusinessToday } from '../../business-day.js';
-import { StaffShell } from '../../components/office/StaffShell.js';
-import { useSession } from '../../session.js';
+import { officeApi } from '../api-office.js';
+import { useBusinessToday } from '../business-day.js';
+import { StaffShell } from '../components/StaffShell.js';
+import { useSession } from '../session.js';
 
 export function DeductionsPage(): React.ReactElement {
   const today = useBusinessToday();

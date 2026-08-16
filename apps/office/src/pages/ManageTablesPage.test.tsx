@@ -19,10 +19,10 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { TableQrDto, TableQrResponse } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
+import { officeApi } from '../api-office.js';
 import { ManageTablesPage } from './ManageTablesPage.js';
 
-vi.mock('../../api-office.js', () => ({
+vi.mock('../api-office.js', () => ({
   officeApi: {
     manageTables: vi.fn(),
     createTable: vi.fn(),
@@ -34,7 +34,7 @@ vi.mock('../../api-office.js', () => ({
   },
 }));
 
-vi.mock('../../manage-store.js', () => ({
+vi.mock('../manage-store.js', () => ({
   useManage: (selector: (state: unknown) => unknown) =>
     selector({ error: null, notice: null, dismiss: () => undefined }),
 }));

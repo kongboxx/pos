@@ -17,12 +17,12 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { toBusinessDate, type StaffDto, type StaffListResponse } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
+import { officeApi } from '../api-office.js';
 import { StaffListPage } from './StaffListPage.js';
 
 const TODAY = toBusinessDate(new Date(), { timezone: 'Asia/Bangkok', dayCutoffHour: 4 });
 
-vi.mock('../../api-office.js', () => ({
+vi.mock('../api-office.js', () => ({
   officeApi: {
     staff: vi.fn(),
     createStaff: vi.fn(),
@@ -33,7 +33,7 @@ vi.mock('../../api-office.js', () => ({
 }));
 
 let allowed = true;
-vi.mock('../../session.js', () => ({
+vi.mock('../session.js', () => ({
   useSession: (selector: (state: unknown) => unknown) =>
     selector({
       branch: { timezone: 'Asia/Bangkok', dayCutoffHour: 4 },

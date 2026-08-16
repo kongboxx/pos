@@ -35,10 +35,10 @@ import {
   type MoveDirection,
   type RecipeLineInput,
 } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
-import { ManageShell } from '../../components/office/ManageShell.js';
-import { MenuItemEditor } from '../../components/office/MenuItemEditor.js';
-import { useManage } from '../../manage-store.js';
+import { officeApi } from '../api-office.js';
+import { ManageShell } from '../components/ManageShell.js';
+import { MenuItemEditor } from '../components/MenuItemEditor.js';
+import { useManage } from '../manage-store.js';
 
 export function ManageMenuPage(): React.ReactElement {
   const menu = useManage((state) => state.menu);
@@ -72,7 +72,9 @@ export function ManageMenuPage(): React.ReactElement {
   const saveItem = useCallback(
     async (input: MenuItemRequest): Promise<boolean> =>
       run(() =>
-        editingItem ? officeApi.updateMenuItem(editingItem.id, input) : officeApi.createMenuItem(input),
+        editingItem
+          ? officeApi.updateMenuItem(editingItem.id, input)
+          : officeApi.createMenuItem(input),
       ),
     [run, editingItem],
   );
@@ -97,7 +99,9 @@ export function ManageMenuPage(): React.ReactElement {
       const target = editingCategory;
       if (!target) return;
       const ok = await run(() =>
-        target === 'NEW' ? officeApi.createCategory(input) : officeApi.updateCategory(target.id, input),
+        target === 'NEW'
+          ? officeApi.createCategory(input)
+          : officeApi.updateCategory(target.id, input),
       );
       if (ok) setEditingCategory(null);
     },
@@ -133,7 +137,9 @@ export function ManageMenuPage(): React.ReactElement {
                     busy={busy}
                     isFirst={index === 0}
                     isLast={index === categories.length - 1}
-                    onMove={(direction) => void run(() => officeApi.moveCategory(category.id, direction))}
+                    onMove={(direction) =>
+                      void run(() => officeApi.moveCategory(category.id, direction))
+                    }
                   />
                   <button
                     type="button"
@@ -200,7 +206,9 @@ export function ManageMenuPage(): React.ReactElement {
                 category={current}
                 busy={busy}
                 onEdit={(item) => setEditing({ item })}
-                onMove={(item, direction) => void run(() => officeApi.moveMenuItem(item.id, direction))}
+                onMove={(item, direction) =>
+                  void run(() => officeApi.moveMenuItem(item.id, direction))
+                }
               />
             ) : null}
           </div>

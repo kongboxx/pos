@@ -31,10 +31,10 @@ import {
   type ExpenseListResponse,
   type ExpenseRequest,
 } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
-import { useBusinessToday } from '../../business-day.js';
-import { Card, ReportShell, Row } from '../../components/office/ReportShell.js';
-import { useSession } from '../../session.js';
+import { officeApi } from '../api-office.js';
+import { useBusinessToday } from '../business-day.js';
+import { Card, ReportShell, Row } from '../components/ReportShell.js';
+import { useSession } from '../session.js';
 
 interface Draft {
   date: string;

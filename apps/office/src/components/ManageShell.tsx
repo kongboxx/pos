@@ -8,7 +8,7 @@
  */
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useManage } from '../../manage-store.js';
+import { useManage } from '../manage-store.js';
 import { path } from '@pos/web-kit';
 
 const TABS = [

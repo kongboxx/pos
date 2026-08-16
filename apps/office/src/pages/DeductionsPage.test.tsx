@@ -12,10 +12,10 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { DeductionDto, DeductionListResponse, StaffListResponse } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
+import { officeApi } from '../api-office.js';
 import { DeductionsPage } from './DeductionsPage.js';
 
-vi.mock('../../api-office.js', () => ({
+vi.mock('../api-office.js', () => ({
   officeApi: {
     deductions: vi.fn(),
     createDeduction: vi.fn(),
@@ -25,7 +25,7 @@ vi.mock('../../api-office.js', () => ({
 }));
 
 let allowed = true;
-vi.mock('../../session.js', () => ({
+vi.mock('../session.js', () => ({
   useSession: (selector: (state: unknown) => unknown) =>
     selector({
       branch: { timezone: 'Asia/Bangkok', dayCutoffHour: 4 },

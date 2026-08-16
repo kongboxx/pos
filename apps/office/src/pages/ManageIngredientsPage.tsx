@@ -21,9 +21,9 @@ import {
   type AdminIngredientDto,
   type IngredientRequest,
 } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
-import { ManageShell } from '../../components/office/ManageShell.js';
-import { useManage } from '../../manage-store.js';
+import { officeApi } from '../api-office.js';
+import { ManageShell } from '../components/ManageShell.js';
+import { useManage } from '../manage-store.js';
 
 interface Draft {
   name: string;

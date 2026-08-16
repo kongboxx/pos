@@ -21,9 +21,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { formatSatang, type VoidReportResponse } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
-import { useBusinessToday } from '../../business-day.js';
-import { Card, ReportShell, Row } from '../../components/office/ReportShell.js';
+import { officeApi } from '../api-office.js';
+import { useBusinessToday } from '../business-day.js';
+import { Card, ReportShell, Row } from '../components/ReportShell.js';
 
 export function VoidReportPage(): React.ReactElement {
   const today = useBusinessToday();

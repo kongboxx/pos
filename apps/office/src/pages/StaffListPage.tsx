@@ -30,10 +30,10 @@ import {
   type StaffListResponse,
   type StaffRequest,
 } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
-import { ExpiryBadge, expiryWarningText, StaffShell } from '../../components/office/StaffShell.js';
-import { useBusinessToday } from '../../business-day.js';
-import { useSession } from '../../session.js';
+import { officeApi } from '../api-office.js';
+import { ExpiryBadge, expiryWarningText, StaffShell } from '../components/StaffShell.js';
+import { useBusinessToday } from '../business-day.js';
+import { useSession } from '../session.js';
 
 interface Draft {
   fullName: string;
@@ -84,16 +84,19 @@ export function StaffListPage(): React.ReactElement {
     void load();
   }, [load]);
 
-  const apply = useCallback((result: Awaited<ReturnType<typeof officeApi.staff>>, message: string) => {
-    if (!result.ok) {
-      setError(result.offline ? 'ต่อเซิร์ฟเวอร์ไม่ได้ — บันทึกไม่สำเร็จ' : result.error);
-      return false;
-    }
-    setData(result.data);
-    setError(null);
-    setNotice(message);
-    return true;
-  }, []);
+  const apply = useCallback(
+    (result: Awaited<ReturnType<typeof officeApi.staff>>, message: string) => {
+      if (!result.ok) {
+        setError(result.offline ? 'ต่อเซิร์ฟเวอร์ไม่ได้ — บันทึกไม่สำเร็จ' : result.error);
+        return false;
+      }
+      setData(result.data);
+      setError(null);
+      setNotice(message);
+      return true;
+    },
+    [],
+  );
 
   const submit = useCallback(async () => {
     const wageRateSatang = parseBahtToSatang(draft.wage === '' ? '0' : draft.wage);

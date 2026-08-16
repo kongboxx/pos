@@ -27,11 +27,11 @@ import {
   type PayrollLineDto,
   type PayrollResponse,
 } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
-import { useBusinessToday } from '../../business-day.js';
-import { PayslipDialog } from '../../components/office/PayslipDialog.js';
-import { StaffShell } from '../../components/office/StaffShell.js';
-import { useSession } from '../../session.js';
+import { officeApi } from '../api-office.js';
+import { useBusinessToday } from '../business-day.js';
+import { PayslipDialog } from '../components/PayslipDialog.js';
+import { StaffShell } from '../components/StaffShell.js';
+import { useSession } from '../session.js';
 
 export function PayrollPage(): React.ReactElement {
   const today = useBusinessToday();
@@ -105,7 +105,10 @@ export function PayrollPage(): React.ReactElement {
       )
     )
       return;
-    await run(() => officeApi.payPayroll(month, { paidDate, paidBy: 'CASH' }), 'จ่ายเงินเดือนเรียบร้อย');
+    await run(
+      () => officeApi.payPayroll(month, { paidDate, paidBy: 'CASH' }),
+      'จ่ายเงินเดือนเรียบร้อย',
+    );
   }, [month, total, paidDate, run]);
 
   const unpay = useCallback(async () => {
@@ -152,7 +155,9 @@ export function PayrollPage(): React.ReactElement {
             <button
               type="button"
               disabled={busy}
-              onClick={() => void run(() => officeApi.generatePayroll(month), 'สร้างรอบเงินเดือนแล้ว')}
+              onClick={() =>
+                void run(() => officeApi.generatePayroll(month), 'สร้างรอบเงินเดือนแล้ว')
+              }
               className="btn mt-4 h-12 bg-brand-600 px-8 text-white hover:bg-brand-500 disabled:opacity-50"
             >
               สร้างรอบเงินเดือน {month}
@@ -220,7 +225,12 @@ export function PayrollPage(): React.ReactElement {
                   busy={busy}
                   onSave={(daysWorked, bonusSatang) =>
                     run(
-                      () => officeApi.updatePayrollLine(line.id, { daysWorked, bonusSatang, note: null }),
+                      () =>
+                        officeApi.updatePayrollLine(line.id, {
+                          daysWorked,
+                          bonusSatang,
+                          note: null,
+                        }),
                       null,
                     )
                   }

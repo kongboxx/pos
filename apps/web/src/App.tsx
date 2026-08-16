@@ -1,7 +1,7 @@
 /**
  * App shell and routing.
  *
- * THREE WORLDS IN ONE BUNDLE, and the splits in this file are the whole point.
+ * TWO WORLDS IN ONE BUNDLE, and the split between them is the whole point.
  *
  * 1. `/t/:token` — the customer's phone (Step 7): no session, no sync loop, no
  *    live socket, no sync bar. Keeping the staff hooks inside StaffApp rather
@@ -18,15 +18,12 @@
  *    into `lazy()`: the bug that creates does not show up on a desk, it shows
  *    up at 12:30 when the bill will not open.
  *
- * 3. `/office/*` — the back office. Exactly the opposite: ONE `lazy()` chunk,
- *    excluded from the precache in vite.config.ts, because a tablet on the
- *    counter has no business carrying the payroll screen. If it cannot be
- *    fetched, OfficeGate says so in words instead of showing a white screen.
- *
- * The rule those two halves share: **lazy and precached are opposites.**
- * Precached means not lazy; lazy means not precached. Getting that pair the
- * wrong way round is the one mistake here that testing on a desk cannot catch,
- * which is why bundle-boundary.test.ts reads the built service worker.
+ * There used to be a third: `/office/*`, one lazy chunk kept out of the
+ * precache so a counter tablet did not carry the payroll screen. It is a
+ * separate site now (apps/office), which is a stronger version of the same
+ * rule — the till cannot ship what it does not import. Nothing here is lazy
+ * any more, and nothing needs excluding from the precache; bundle-boundary
+ * .test.ts checks that the built bundle really is free of it.
  *
  * For the staff app the session is checked ONCE on boot by asking the server
  * (`/auth/me`). If that call cannot go out, the app falls back to the identity
@@ -39,14 +36,13 @@
  * still be sent after they walk back to the floor plan.
  */
 
-import { lazy, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { Permission } from '@pos/shared';
 import { PrintTestPage } from './PrintTestPage.js';
 import { StatusPage } from './StatusPage.js';
 import { SyncBar } from './components/SyncBar.js';
 import { useLive } from './live-store.js';
-import { OfficeGate } from './office-gate.js';
 import { useSync } from './offline/sync-store.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { QrOrderPage } from './pages/QrOrderPage.js';
@@ -59,11 +55,6 @@ import { ShiftPage } from './pages/pos/ShiftPage.js';
 import { RequireAuth, RequirePermission } from './route-guards.js';
 import { path } from '@pos/web-kit';
 import { useSession } from './session.js';
-
-/** The one door into the back office. See pages/office/routes.tsx. */
-const OfficeRoutes = lazy(() =>
-  import('./pages/office/routes.js').then((module) => ({ default: module.OfficeRoutes })),
-);
 
 export function App(): React.ReactElement {
   return (
@@ -144,16 +135,6 @@ function StaffApp(): React.ReactElement {
               <Route path="/pos/shift" element={<ShiftPage />} />
             </Route>
 
-            {/* --- the back office: one lazy chunk, not precached ----- */}
-            <Route
-              path="/office/*"
-              element={
-                <OfficeGate>
-                  <OfficeRoutes />
-                </OfficeGate>
-              }
-            />
-
             {/* Kept from Steps 0-1: hardware and connectivity diagnostics.
                 Neither till nor office — they are for whoever is holding a
                 screwdriver, and they have to work when nothing else does. */}
@@ -166,17 +147,18 @@ function StaffApp(): React.ReactElement {
               showing, and right after this deploy that is an address from
               before the split — most often /order/<uuid>, the screen the
               cashier was on. Falling through to the catch-all would throw the
-              bill id away and land them on the floor plan mid-order. */}
+              bill id away and land them on the floor plan mid-order.
+
+              The office prefixes that used to be listed here are gone with the
+              screens: they now live on another host, and a redirect this app
+              could write would only send someone deeper into the wrong site.
+              Landing on the floor plan is the honest answer. */}
           <Route path="/tables" element={<Navigate to={path.tables} replace />} />
           <Route path="/kitchen" element={<Navigate to={path.kitchen} replace />} />
           <Route path="/approvals" element={<Navigate to={path.approvals} replace />} />
           <Route path="/bills" element={<Navigate to={path.bills} replace />} />
           <Route path="/shift" element={<Navigate to={path.shift} replace />} />
           <Route path="/order/*" element={<Moved to="/pos/order" />} />
-          <Route path="/manage/*" element={<Moved to="/office" />} />
-          <Route path="/reports/*" element={<Moved to="/office/reports" />} />
-          <Route path="/staff/*" element={<Moved to="/office/staff" />} />
-          <Route path="/settings/*" element={<Moved to="/office/settings" />} />
 
           <Route path="*" element={<Navigate to={path.tables} replace />} />
         </Routes>

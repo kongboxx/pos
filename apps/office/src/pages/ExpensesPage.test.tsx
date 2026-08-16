@@ -16,14 +16,14 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { toBusinessDate, type ExpenseListResponse } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
+import { officeApi } from '../api-office.js';
 import { ExpensesPage } from './ExpensesPage.js';
 
 /** Computed the same way the screen does, so this asserts "today in the
  *  branch's terms" rather than freezing the clock around the whole file. */
 const TODAY = toBusinessDate(new Date(), { timezone: 'Asia/Bangkok', dayCutoffHour: 4 });
 
-vi.mock('../../api-office.js', () => ({
+vi.mock('../api-office.js', () => ({
   officeApi: {
     expenses: vi.fn(),
     createExpense: vi.fn(),
@@ -33,7 +33,7 @@ vi.mock('../../api-office.js', () => ({
 }));
 
 let allowed = true;
-vi.mock('../../session.js', () => ({
+vi.mock('../session.js', () => ({
   useSession: (selector: (state: unknown) => unknown) =>
     selector({
       branch: { timezone: 'Asia/Bangkok', dayCutoffHour: 4 },

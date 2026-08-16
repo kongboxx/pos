@@ -24,9 +24,9 @@ import {
   expenseCategoryLabel,
   type DailyReportResponse,
 } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
-import { useBusinessToday } from '../../business-day.js';
-import { Card, formatBp, ReportShell, Row } from '../../components/office/ReportShell.js';
+import { officeApi } from '../api-office.js';
+import { useBusinessToday } from '../business-day.js';
+import { Card, formatBp, ReportShell, Row } from '../components/ReportShell.js';
 
 export function DailyReportPage(): React.ReactElement {
   const today = useBusinessToday();

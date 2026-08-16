@@ -11,12 +11,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { DailyReportResponse } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
+import { officeApi } from '../api-office.js';
 import { DailyReportPage } from './DailyReportPage.js';
 
-vi.mock('../../api-office.js', () => ({ officeApi: { dailyReport: vi.fn() } }));
+vi.mock('../api-office.js', () => ({ officeApi: { dailyReport: vi.fn() } }));
 
-vi.mock('../../session.js', () => ({
+vi.mock('../session.js', () => ({
   useSession: (selector: (state: unknown) => unknown) =>
     selector({ branch: { timezone: 'Asia/Bangkok', dayCutoffHour: 4 }, can: () => true }),
 }));

@@ -10,9 +10,6 @@
  * they are about to stop: plan 2 replaces this file's copy with an email
  * login while the till keeps its PIN. Sharing them now would have to be
  * unpicked then.
- *
- * Temporary address. Task 8 moves this file into apps/office; it lives here
- * first so every step of the split ends with a green test run.
  */
 
 import { createHttp, type ApiResult } from '@pos/web-kit';

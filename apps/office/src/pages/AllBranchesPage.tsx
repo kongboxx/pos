@@ -12,9 +12,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { formatSatang, type AllBranchesResponse } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
-import { useBusinessToday } from '../../business-day.js';
-import { SettingsShell } from '../../components/office/SettingsShell.js';
+import { officeApi } from '../api-office.js';
+import { useBusinessToday } from '../business-day.js';
+import { SettingsShell } from '../components/SettingsShell.js';
 
 export function AllBranchesPage(): React.ReactElement {
   const today = useBusinessToday();

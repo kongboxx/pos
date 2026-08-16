@@ -17,14 +17,14 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { BranchDto, BranchListResponse } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
+import { officeApi } from '../api-office.js';
 import { BranchesPage } from './BranchesPage.js';
 
-vi.mock('../../api-office.js', () => ({
+vi.mock('../api-office.js', () => ({
   officeApi: { branches: vi.fn(), createBranch: vi.fn(), updateBranch: vi.fn() },
 }));
 
-vi.mock('../../session.js', () => ({
+vi.mock('../session.js', () => ({
   useSession: (selector: (state: unknown) => unknown) =>
     selector({ branch: { timezone: 'Asia/Bangkok', dayCutoffHour: 4 }, can: () => true }),
 }));
@@ -157,7 +157,10 @@ describe('adding a shop', () => {
 
   it('uppercases the branch code on the way out', async () => {
     const user = userEvent.setup();
-    vi.mocked(officeApi.createBranch).mockResolvedValue({ ok: true, data: branch({ id: 'other' }) });
+    vi.mocked(officeApi.createBranch).mockResolvedValue({
+      ok: true,
+      data: branch({ id: 'other' }),
+    });
     await show();
     await user.click(screen.getByRole('button', { name: '+ เพิ่มสาขา' }));
 

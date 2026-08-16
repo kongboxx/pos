@@ -12,12 +12,12 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { VoidReportResponse } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
+import { officeApi } from '../api-office.js';
 import { VoidReportPage } from './VoidReportPage.js';
 
-vi.mock('../../api-office.js', () => ({ officeApi: { voidReport: vi.fn() } }));
+vi.mock('../api-office.js', () => ({ officeApi: { voidReport: vi.fn() } }));
 
-vi.mock('../../session.js', () => ({
+vi.mock('../session.js', () => ({
   useSession: (selector: (state: unknown) => unknown) =>
     selector({ branch: { timezone: 'Asia/Bangkok', dayCutoffHour: 4 }, can: () => true }),
 }));

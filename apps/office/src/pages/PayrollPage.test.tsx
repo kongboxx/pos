@@ -17,10 +17,10 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { PayrollLineDto, PayrollResponse } from '@pos/shared';
-import { officeApi } from '../../api-office.js';
+import { officeApi } from '../api-office.js';
 import { PayrollPage } from './PayrollPage.js';
 
-vi.mock('../../api-office.js', () => ({
+vi.mock('../api-office.js', () => ({
   officeApi: {
     payroll: vi.fn(),
     generatePayroll: vi.fn(),
@@ -32,7 +32,7 @@ vi.mock('../../api-office.js', () => ({
 }));
 
 let allowed = true;
-vi.mock('../../session.js', () => ({
+vi.mock('../session.js', () => ({
   useSession: (selector: (state: unknown) => unknown) =>
     selector({
       branch: { timezone: 'Asia/Bangkok', dayCutoffHour: 4, name: 'ร้านก๋วยเตี๋ยว สาขาหลัก' },
