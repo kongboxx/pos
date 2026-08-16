@@ -1806,10 +1806,11 @@ git add -A && git commit -m "feat: move the back office screens into apps/office
 
 **Files:**
 - Rewrite: `apps/web/src/bundle-boundary.test.ts`
+- Modify: `apps/web/vite.config.ts` — **แผนลืมข้อนี้** ดูหมายเหตุใต้ Step 1
 
 **Interfaces:**
 - Consumes: `apps/web/dist` และ `apps/office/dist` ที่ build แล้ว
-- Produces: เทสต์ 5 ตัวที่พิสูจน์ 4 เงื่อนไขใน spec §6.3
+- Produces: เทสต์ **6** ตัวที่พิสูจน์ 4 เงื่อนไขใน spec §6.3
 
 - [ ] **Step 1: build ทั้งสองแอปเพื่อให้มีของให้ตรวจ**
 
@@ -1818,6 +1819,12 @@ pnpm build
 ```
 
 Expected: ผ่านทั้ง 4 workspace
+
+> **แผนลืมถอดเครื่องมือเก่าใน `apps/web/vite.config.ts`** — ทั้ง `globIgnores: ['**/office-*.js', ...]`
+> และ `manualChunks` ที่ปักชื่อ chunk ว่า `office` · ทั้งสองอย่างไม่ match อะไรแล้วตั้งแต่ Task 8
+> จึงไม่ทำให้เทสต์แดง แต่ **นั่นแหละคือปัญหา**: config ที่ยังพูดถึงของที่ไม่มี คือ config ที่คนอ่าน
+> ครั้งถัดไปจะเชื่อ · ถอดออกพร้อมเขียนคอมเมนต์ว่าทำไมตอนนี้ precache ทุกอย่างจึงถูกต้อง
+> (เพราะที่เหลือในนี้มีแต่ของหน้าร้าน — ถ้าวันไหนไม่จริง ให้ย้ายหน้าจอออก ไม่ใช่เติม exclusion กลับ)
 
 - [ ] **Step 2: เขียนไฟล์เทสต์ใหม่ทั้งไฟล์**
 
@@ -1935,7 +1942,22 @@ suite('the office bundle', () => {
 pnpm --filter @pos/web test src/bundle-boundary.test.ts
 ```
 
-Expected: PASS 5 เทสต์
+Expected: PASS **6** เทสต์
+
+> **สี่จุดที่แผนเขียนไว้ใช้ไม่ได้ เจอตอนรันจริง**
+>
+> 1. **`__dirname` ไม่มีใน ESM** — ทั้ง repo เป็น `"type": "module"` · ไฟล์เดิมใช้
+>    `fileURLToPath(import.meta.url)` อยู่แล้ว ต้องใช้แบบนั้น ไม่งั้น `ReferenceError` ตั้งแต่บรรทัดแรก
+> 2. **หา `'ManageMenuPage'` `'PayrollPage'` ในบันเดิลไม่เจอ** — build ย่อชื่อฟังก์ชันทิ้ง
+>    เทสต์จะ**ผ่านเพราะ esbuild เปลี่ยนชื่อตัวแปร ไม่ใช่เพราะหน้าจอไม่อยู่** ซึ่งแย่กว่าไม่มีเทสต์
+>    เปลี่ยนไปจับ**ข้อความไทยที่ผู้ใช้เห็น** ซึ่ง ship ไปตรง ๆ ไม่ถูกย่อ
+> 3. **`'เงินเดือน'` เป็น sentinel ที่ใช้ไม่ได้** — มันอยู่ใน `@pos/shared` (คำใบ้หมวดรายจ่ายใน
+>    `report.ts`) จึงติดไปทั้งสองแอป · **ต้องตรวจก่อนเสมอว่า sentinel อยู่ในบันเดิลที่ควรอยู่จริง**
+>    คำที่ไม่อยู่ในบันเดิลไหนเลยคือคำที่ผ่านตลอดกาลและไม่ได้เฝ้าอะไร · เช่นเดียวกับฝั่งหน้าร้าน:
+>    `'ยังไม่ส่ง'` ที่แผนเดาไว้ไม่มีอยู่จริง ของจริงคือ `'กำลังส่งข้อมูลที่ค้างไว้'`
+> 4. **`expect(js).not.toContain(x)` พังแบบอ่านไม่ได้** — ตอนล้มมันพิมพ์ haystack ทั้งก้อน
+>    คือ workbox ที่ minify แล้วครึ่งเมกะไบต์ · เปลี่ยนเป็นเก็บรายการที่ผิดแล้ว `toEqual([])`
+>    เทสต์ที่ล้มแล้วอ่านไม่รู้เรื่องคือเทสต์ที่คนถัดไปลบทิ้งแทนที่จะอ่าน
 
 - [ ] **Step 4: พิสูจน์ว่ามันจับได้จริง**
 
@@ -1946,13 +1968,25 @@ Expected: PASS 5 เทสต์
 
 บันทึกผลทั้งสองข้อไว้ใน commit message
 
+> **ทำจริง — ผ่านทั้งสามข้อ**
+>
+> 1. `@pos/office` ไม่ใช่ dependency ของ `apps/web` จึง import แบบนั้นไม่ได้ · ใช้ path
+>    ที่ปีนออกนอกแพ็กเกจแทน (`'../../office/src/pages/PayrollPage.js'`) ซึ่ง**คือรูรั่วตัวจริง**
+>    ที่เทสต์นี้มีไว้จับ · build แล้วบันเดิลหน้าร้านโตจาก 562 kB เป็น 581 kB และเทสต์ล้มตามคาด
+> 2. เติม `VitePWA` เข้า `apps/office` ไม่ได้ตรง ๆ เพราะแอปนี้จงใจไม่มี `vite-plugin-pwa` ติดตั้งอยู่
+>    จึงพิสูจน์สองทางแทน: วาง `sw.js` เปล่าไว้ใน `apps/office/dist` → ล้มข้อ "ships no service worker"
+>    และเติม `vite-plugin-pwa` + `dexie` เข้า `package.json` → ล้มข้อ "declares no local-database
+>    dependency" · **ความจริงที่ข้อ 2 เผยออกมา**: การที่เติม plugin ไม่ได้โดยไม่แตะ `package.json` ก่อน
+>    คือรั้วที่แข็งกว่าเทสต์ — เทสต์ทำหน้าที่เฝ้าขั้นที่สอง คือวันที่มีคนเติม dependency นั้นจริง ๆ
+> 3. ทุกครั้งถอดของที่แกล้งใส่ออกแล้ว build ใหม่ ยืนยันกลับมาเขียว 6/6
+
 - [ ] **Step 5: รันทุกอย่างให้เขียว**
 
 ```bash
 pnpm build && pnpm typecheck && pnpm lint && pnpm test
 ```
 
-Expected: ผ่านหมด · `@pos/web` 252 · `@pos/office` 112 · `@pos/web-kit` 12 · `@pos/shared` 405 · `@pos/print-agent` 15
+Expected: ผ่านหมด · `@pos/web` **248** · `@pos/office` 112 · `@pos/web-kit` 12 · `@pos/shared` 405 · `@pos/api` 328 · `@pos/print-agent` 15 — ไม่มีข้ามสักตัว
 
 - [ ] **Step 6: Commit**
 

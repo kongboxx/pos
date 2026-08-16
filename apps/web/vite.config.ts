@@ -11,28 +11,22 @@ export default defineConfig({
       registerType: 'autoUpdate',
       devOptions: { enabled: false },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         /**
-         * THE BACK OFFICE IS NOT PRECACHED, ON PURPOSE.
+         * Everything built here is precached, and that is now the whole rule.
          *
-         * vite-plugin-pwa precaches every built js and css file it finds, so
-         * splitting /office into its own lazy chunk does NOT on its own keep
-         * it off the tablet — workbox would simply download the chunk during
-         * install and cache it forever. The lazy import controls when the
-         * chunk loads; this line controls whether it is ever downloaded at
-         * all. Both are needed, and neither works without the other.
+         * There used to be a `globIgnores` line keeping the back office out,
+         * because vite-plugin-pwa precaches every js and css file it finds —
+         * a lazy chunk alone would not have kept the payroll screen off the
+         * tablet, workbox would have downloaded it at install and held it
+         * forever. Two settings had to agree, and the day they stopped
+         * agreeing nothing would have said so.
          *
-         * The cost is deliberate and handled: with no connection the office
-         * chunk cannot be fetched and `import()` rejects. OfficeGate catches
-         * that and says the back office needs a connection, rather than
-         * leaving a white screen.
-         *
-         * The name comes from `manualChunks` below. If that name changes, this
-         * pattern silently stops matching and the payroll screen is back on
-         * the till with nothing complaining — which is what
-         * bundle-boundary.test.ts exists to catch.
+         * The office is a separate site now, so there is nothing left in this
+         * build to exclude. Precaching everything is correct BECAUSE what is
+         * here is only the till: if that stops being true, the fix is to move
+         * the screen out, not to add an exclusion back.
          */
-        globIgnores: ['**/office-*.js', '**/office-*.css'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         /**
          * The app shell answers ANY route from the cache (Step 4).
          *
@@ -76,31 +70,16 @@ export default defineConfig({
     // Lets the tablet on the shop wifi reach the dev server by LAN IP.
     host: true,
   },
+  /**
+   * No `manualChunks`. There used to be one, and it was not for speed — it
+   * pinned the back office to a chunk NAMED "office" so the precache exclusion
+   * had a stable filename to match. Both halves are gone with the office
+   * itself; rollup splits normally now, and every piece it emits belongs on
+   * the tablet.
+   */
   build: {
     target: 'es2022',
     sourcemap: true,
-    rollupOptions: {
-      output: {
-        /**
-         * Every back-office module lands in ONE chunk called "office".
-         *
-         * Not for speed — for a name. The precache exclusion above has to
-         * match built filenames, and rollup's automatic names follow whichever
-         * module happened to be the entry point, so they move whenever the
-         * back office is refactored. Pinning the name means the exclusion is
-         * one line that keeps working when a fourteenth screen is added.
-         *
-         * Anything imported by BOTH sides falls through to `undefined` and
-         * rollup puts it in a shared chunk, which is precached — correct,
-         * because the till needs it.
-         */
-        manualChunks(id) {
-          if (id.includes('/pages/office/') || id.includes('/components/office/')) return 'office';
-          return undefined;
-        },
-        chunkFileNames: 'assets/[name]-[hash].js',
-      },
-    },
   },
   test: {
     environment: 'jsdom',

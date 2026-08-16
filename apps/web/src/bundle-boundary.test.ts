@@ -1,130 +1,136 @@
 /**
- * The fence around the till.
+ * The boundary between the two sites, checked against what actually shipped.
  *
- * ⚠️ SKIPPED FOR ONE COMMIT. Every assertion below is written against a layout
- * that no longer exists: pages/office and components/office moved to
- * apps/office, and there is no lazy chunk left to keep out of the precache.
- * The next commit rewrites this file for the two-site world. Skipping is not
- * "deleting the fence" — it is admitting, for exactly one step, that the fence
- * is pointing at an empty field.
+ * This reads the BUILT output, not the source, because the mistake it exists
+ * to catch is a build-config mistake: a payroll screen that lands on the till's
+ * disk looks completely normal in the source tree and completely normal on a
+ * desk with wifi. It only shows up at 12:30 when the tablet is full of code it
+ * has no business holding.
  *
- * Every other test in this app renders something and asserts what a person
- * sees. This one reads source files and the built service worker, because the
- * two mistakes it guards against are invisible on a desk and only appear on a
- * tablet with no signal:
+ * The split into two apps is a stronger fence than the lazy chunk it replaced —
+ * the till cannot ship what it does not import — but "stronger" is not "self
+ * enforcing". One relative import that climbs out of apps/office, or one
+ * VitePWA() added to the office config by someone tidying up, puts it back.
  *
- *   1. A back-office screen gets precached onto the till. Nothing breaks —
- *      the tablet just carries the payroll screen it will never open, and
- *      carries the next five back-office features too. Slow rot, no symptom.
- *
- *   2. A till screen becomes lazy, or the office chunk stops being excluded.
- *      This one is not slow: `import()` rejects with no connection, and the
- *      bill will not open at 12:30. Both halves of "lazy and precached are
- *      opposites" are checked here, in that direction.
- *
- * The service-worker assertions need a build. `pnpm build` runs before
- * `pnpm test` in the verification sequence, so in practice dist is there; if
- * it is not, those cases skip rather than failing a fresh clone, and the
- * source-level cases below still run and still catch a lazy till screen.
+ * Run `pnpm build` first. These skip themselves rather than fail when dist/ is
+ * missing, so a fresh clone running `pnpm test` is not greeted by a red suite
+ * it cannot fix by writing code.
  */
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const SRC = dirname(fileURLToPath(import.meta.url));
-const DIST = join(SRC, '..', 'dist');
+const TILL_DIST = join(SRC, '..', 'dist');
+const OFFICE_DIST = join(SRC, '..', '..', 'office', 'dist');
+const OFFICE_PKG = join(SRC, '..', '..', 'office', 'package.json');
 
-function sourcesUnder(...dirs: string[]): { file: string; text: string }[] {
-  const out: { file: string; text: string }[] = [];
-  const walk = (dir: string, label: string): void => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = join(dir, entry.name);
-      if (entry.isDirectory()) walk(full, `${label}/${entry.name}`);
-      else if (/\.tsx?$/.test(entry.name) && !entry.name.includes('.test.'))
-        out.push({ file: `${label}/${entry.name}`, text: readFileSync(full, 'utf8') });
-    }
-  };
-  for (const dir of dirs) walk(join(SRC, dir), dir);
+const built = existsSync(TILL_DIST) && existsSync(OFFICE_DIST);
+const suite = built ? describe : describe.skip;
+
+/**
+ * Walked by hand rather than with readdirSync({ recursive: true }), whose
+ * `parentPath` on the returned entries only exists from Node 20.12 — and this
+ * repo's floor is 20.11.
+ */
+function filesUnder(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...filesUnder(full));
+    else out.push(full);
+  }
   return out;
 }
 
-/** every module specifier a file imports, however it spells it */
-function specifiersIn(text: string): string[] {
-  return [...text.matchAll(/(?:from\s+'|import\s*\(\s*'|vi\.mock\(\s*')([^']+)'/g)].map(
-    (m) => m[1]!,
-  );
-}
+/**
+ * Every shipped .js, concatenated. The .map files sitting next to them are
+ * deliberately NOT read: a sourcemap carries the original identifiers, so
+ * searching one would report a name the browser never receives.
+ */
+const shippedJs = (dist: string): string =>
+  filesUnder(dist)
+    .filter((f) => f.endsWith('.js'))
+    .map((f) => readFileSync(f, 'utf8'))
+    .join('\n');
 
-/* ------------------------------------------------------------------ */
-/* source: what may reach what                                         */
-/* ------------------------------------------------------------------ */
+suite('the till bundle', () => {
+  it('carries no back-office screen', () => {
+    // Strings that exist only in apps/office. Thai UI text rather than
+    // component names: minification renames functions, so `PayrollPage` may
+    // not survive the build even when the whole screen does — a test that
+    // passes because esbuild shortened an identifier proves nothing. The
+    // labels a person reads are shipped verbatim.
+    //
+    // Each of these was checked to be present in the OFFICE bundle before
+    // being trusted here, which is the half that is easy to skip: a sentinel
+    // that is in neither bundle passes forever and guards nothing. The
+    // obvious candidate "เงินเดือน" is deliberately absent from the list — it
+    // ships in both, from an expense-category hint in @pos/shared.
+    const officeOnly = ['กำไรขาดทุน', 'รายการหักเงิน', 'ทุกสาขา', 'สลิปเงินเดือน'];
+    const js = shippedJs(TILL_DIST);
 
-describe.skip('the back office cannot reach the offline layer', () => {
-  it('no office screen imports IndexedDB or the outbox', () => {
-    // A back-office screen reading the local mirror would be showing figures
-    // from a cache that is only ever as fresh as the last sync — and a payroll
-    // total or a P&L computed from a stale cache is a wrong number that looks
-    // exactly like a right one. These screens are online-only by design; this
-    // is what stops that decision quietly eroding one import at a time.
-    const offenders = sourcesUnder('pages/office', 'components/office')
-      .filter(({ text }) => specifiersIn(text).some((s) => s.includes('offline/')))
-      .map(({ file }) => file);
+    // The offenders are collected and compared, rather than asserted one by
+    // one with `expect(js).not.toContain(...)`. That form fails by printing
+    // the haystack — half a megabyte of minified workbox — and a test whose
+    // failure is unreadable is a test that gets deleted instead of read.
+    expect(officeOnly.filter((label) => js.includes(label))).toEqual([]);
+  });
 
-    expect(offenders).toEqual([]);
+  it('precaches the screens that must open with the wifi down', () => {
+    const sw = readFileSync(join(TILL_DIST, 'sw.js'), 'utf8');
+    // The shell answers any route from cache; without this a reload onto
+    // /pos/order/<uuid> — where the tablet lands after every reload — asks the
+    // server for a page it cannot reach.
+    expect(sw).toContain('index.html');
+    const precachedJs = [...sw.matchAll(/assets\/[^"']+\.js/g)].map((m) => m[0]);
+    expect(precachedJs.length).toBeGreaterThan(0);
+  });
+
+  it('still ships a service worker at all', () => {
+    // The inverse mistake: making the assertions above pass by breaking the
+    // PWA, which would take the till offline-capability with it.
+    expect(existsSync(join(TILL_DIST, 'sw.js'))).toBe(true);
+    expect(existsSync(join(TILL_DIST, 'manifest.webmanifest'))).toBe(true);
   });
 });
 
-describe.skip('the till cannot reach the back office', () => {
-  it('no till screen imports an office module', () => {
-    // This is the import that would undo the whole split without any visible
-    // symptom: one till screen importing one office component drags the
-    // office chunk back into the precached bundle, and the tablet is carrying
-    // the payroll screen again.
-    const offenders = sourcesUnder('pages/pos')
-      .filter(({ text }) => specifiersIn(text).some((s) => s.includes('office/')))
-      .map(({ file }) => file);
-
-    expect(offenders).toEqual([]);
-  });
-});
-
-describe.skip('no till screen is lazy', () => {
-  it('the only dynamic import in the app shell is the back office', () => {
-    // A lazy chunk that is not precached cannot be fetched with no signal.
-    // For the office that is intended and handled; for anything under /pos it
-    // means the screen does not open, and it will pass every test on a desk.
-    const app = readFileSync(join(SRC, 'App.tsx'), 'utf8');
-    const dynamic = [...app.matchAll(/import\s*\(\s*'([^']+)'/g)].map((m) => m[1]!);
-
-    expect(dynamic).toEqual(['./pages/office/routes.js']);
-  });
-});
-
-/* ------------------------------------------------------------------ */
-/* build: what actually lands on the tablet                            */
-/* ------------------------------------------------------------------ */
-
-const built = existsSync(join(DIST, 'sw.js'));
-
-describe.skip('the service worker precache', () => {
-  const sw = built ? readFileSync(join(DIST, 'sw.js'), 'utf8') : '';
-  const precached = [...sw.matchAll(/"(assets\/[^"]+)"/g)].map((m) => m[1]!);
-  const assets = built ? readdirSync(join(DIST, 'assets')) : [];
-
-  it('carries the till', () => {
-    // If this ever empties, the app stopped working offline altogether.
-    expect(precached.some((f) => /^assets\/index-.*\.js$/.test(f))).toBe(true);
+suite('the office bundle', () => {
+  it('ships no service worker and no manifest', () => {
+    // A worker here would cache a payroll figure and serve it after the number
+    // changed, and nothing on screen would say so.
+    expect(existsSync(join(OFFICE_DIST, 'sw.js'))).toBe(false);
+    expect(existsSync(join(OFFICE_DIST, 'manifest.webmanifest'))).toBe(false);
+    expect(existsSync(join(OFFICE_DIST, 'registerSW.js'))).toBe(false);
+    // .includes() rather than not.toContain(), for the same reason as below:
+    // the failure message should be `false`, not the entire bundle.
+    expect(shippedJs(OFFICE_DIST).includes('serviceWorker')).toBe(false);
   });
 
-  it('does not carry the back office', () => {
-    expect(precached.filter((f) => f.includes('office-'))).toEqual([]);
+  it('declares no local-database dependency', () => {
+    // Checked against the manifest rather than by grepping the bundle for
+    // "indexedDB": that string turns up inside unrelated vendor code and the
+    // false positive would get the whole test deleted by whoever hits it.
+    const pkg = JSON.parse(readFileSync(OFFICE_PKG, 'utf8')) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    const declared = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
+    expect(declared).not.toContain('dexie');
+    expect(declared).not.toContain('fake-indexeddb');
+    expect(declared).not.toContain('vite-plugin-pwa');
   });
 
-  it('still SHIPS the back office, it just does not cache it', () => {
-    // The other way to make the previous assertion pass is to break the office
-    // build entirely, which would also stop it loading online.
-    expect(assets.filter((f) => /^office-.*\.js$/.test(f)).length).toBe(1);
+  it("does not reach across into the till's offline layer", () => {
+    // A separate package, so this should not compile — but a relative path
+    // that climbs out of apps/office would, and this is the cheap guard.
+    // Again by shipped text, not identifier: these are the words on the sync
+    // bar, which only exists because the till has an outbox to report on.
+    const tillOnly = ['กำลังส่งข้อมูลที่ค้างไว้', 'ทิ้งการแก้ไขบน', 'ออฟไลน์'];
+    const js = shippedJs(OFFICE_DIST);
+
+    expect(tillOnly.filter((label) => js.includes(label))).toEqual([]);
   });
 });
