@@ -614,7 +614,7 @@ from a working database rather than tangled up with a feature."
 
   Task 4, 5, 7, 10 ใช้ทั้งหมดนี้
 
-- [ ] **Step 1: เขียนเทสต์ที่ยังไม่ผ่าน**
+- [x] **Step 1: เขียนเทสต์ที่ยังไม่ผ่าน**
 
 สร้าง `apps/api/src/modules/auth/session.service.test.ts`:
 
@@ -802,7 +802,7 @@ describe('purging', () => {
 });
 ```
 
-- [ ] **Step 2: รันแล้วดูให้แน่ใจว่าแดง**
+- [x] **Step 2: รันแล้วดูให้แน่ใจว่าแดง**
 
 ```bash
 pnpm --filter @pos/api test -- src/modules/auth/session.service.test.ts
@@ -810,7 +810,7 @@ pnpm --filter @pos/api test -- src/modules/auth/session.service.test.ts
 
 คาดหวัง: FAIL — `Cannot find module './session.service.js'`
 
-- [ ] **Step 3: เขียน `session.service.ts`**
+- [x] **Step 3: เขียน `session.service.ts`**
 
 สร้าง `apps/api/src/modules/auth/session.service.ts`:
 
@@ -950,7 +950,7 @@ export class SessionService {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 ```
 
-- [ ] **Step 4: รันเทสต์**
+- [x] **Step 4: รันเทสต์**
 
 ```bash
 pnpm --filter @pos/api test -- src/modules/auth/session.service.test.ts
@@ -958,7 +958,7 @@ pnpm --filter @pos/api test -- src/modules/auth/session.service.test.ts
 
 คาดหวัง: PASS 16 ตัว
 
-- [ ] **Step 5: เทสต์ทั้ง workspace แล้ว commit**
+- [x] **Step 5: เทสต์ทั้ง workspace แล้ว commit**
 
 ```bash
 pnpm test
