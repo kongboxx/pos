@@ -9,7 +9,14 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance } from 'fastify';
-import { MAX_PIN_ATTEMPTS, Permission, Role, SESSION_COOKIE_NAME } from '@pos/shared';
+import {
+  MAX_PIN_ATTEMPTS,
+  OFFICE_SESSION_COOKIE_NAME,
+  Permission,
+  Role,
+  SESSION_COOKIE_NAME,
+  SESSION_TTL_SECONDS,
+} from '@pos/shared';
 import { prisma } from '../../db.js';
 import { buildTestApp, loginAs, SEED_PINS } from '../../test-helpers.js';
 
@@ -180,25 +187,100 @@ describe('/auth/me', () => {
   });
 
   /**
-   * Logging out clears the cookie, which is how the browser stops sending it.
+   * Logging out now ends the session on the server, not just in the browser.
    *
-   * Known limitation, stated plainly: the JWT itself stays valid until it
-   * expires, so a token captured BEFORE logout would still be accepted. On a
-   * shop LAN over plain http that is a real (if small) gap, and the fix is
-   * https plus server-side revocation — deployment work, not Step 2 work.
+   * The cleared cookie is still sent, because that is what stops the browser
+   * presenting it. But the row is revoked too, so a copy of the token taken
+   * before logout is dead the moment logout returns. That gap used to be a
+   * known limitation written into this file; it is what plan 2 closed.
    */
-  it('clears the session cookie on logout', async () => {
+  it('clears the cookie AND kills the session behind it', async () => {
     const { cookie } = await loginAs(app, Role.MANAGER);
+
+    const before = await app.inject({ method: 'GET', url: '/api/auth/me', headers: { cookie } });
+    expect(before.statusCode).toBe(200);
+
     const response = await app.inject({
       method: 'POST',
       url: '/api/auth/logout',
       headers: { cookie },
     });
-
     expect(response.statusCode).toBe(200);
+
     const raw = response.headers['set-cookie'];
     const cleared = Array.isArray(raw) ? raw.join(';') : (raw ?? '');
     expect(cleared).toContain(SESSION_COOKIE_NAME);
     expect(cleared).toMatch(/Max-Age=0|Expires=Thu, 01 Jan 1970/);
+
+    // The part that is new: the SAME cookie value, replayed by hand the way a
+    // stolen token would be, no longer works.
+    const replayed = await app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      headers: { cookie },
+    });
+    expect(replayed.statusCode).toBe(401);
+  });
+
+  it('records the session row when someone logs in', async () => {
+    const { staffId } = await loginAs(app, Role.STAFF);
+    const row = await prisma.session.findFirst({
+      where: { staffId, revokedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    expect(row).not.toBeNull();
+    expect(row?.surface).toBe('POS');
+    // Twelve hours, the till's TTL — not the office's eight.
+    const life =
+      (row as { expiresAt: Date; createdAt: Date }).expiresAt.getTime() -
+      (row as { createdAt: Date }).createdAt.getTime();
+    expect(Math.round(life / 1000)).toBe(SESSION_TTL_SECONDS);
+  });
+
+  it('refuses a token whose session row was revoked out from under it', async () => {
+    const { staffId, cookie } = await loginAs(app, Role.STAFF);
+    await prisma.session.updateMany({
+      where: { staffId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    const response = await app.inject({ method: 'GET', url: '/api/auth/me', headers: { cookie } });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('refuses a validly signed token that carries no jti at all', async () => {
+    // Every token issued before plan 2 looks like this. They must not be
+    // honoured, or the hole stays open for as long as the longest old token
+    // lives and nobody can say when it closed.
+    const staff = await prisma.staff.findFirstOrThrow({ where: { role: Role.STAFF } });
+    const token = app.jwt.sign({
+      staffId: staff.id,
+      branchId: staff.branchId,
+      role: staff.role,
+      fullName: staff.fullName,
+      nickname: staff.nickname,
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('accepts the office cookie name on the same endpoints', async () => {
+    // The two sites use different cookie names; the API has to read both or
+    // every office request after login is a 401.
+    const { cookie } = await loginAs(app, Role.OWNER);
+    const value = cookie.split('=').slice(1).join('=');
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      headers: { cookie: `${OFFICE_SESSION_COOKIE_NAME}=${value}` },
+    });
+    expect(response.statusCode).toBe(200);
   });
 });

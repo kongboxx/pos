@@ -170,7 +170,12 @@ describe('purging', () => {
     const now = new Date('2026-08-17T10:00:00Z');
     await service.issue({ ...input(), ttlSeconds: 60 }, now);
 
-    expect(await service.purgeExpired(new Date('2026-11-20T10:00:00Z'))).toBe(1);
+    // Not `toBe(1)`: purging is global by design, and every other test file in
+    // this suite logs in against the same database and leaves its own rows
+    // behind. The count would be whatever ran before this file today, which is
+    // a number no assertion should depend on. What this test is actually about
+    // is the row it created, so that is what it checks.
+    expect(await service.purgeExpired(new Date('2026-11-20T10:00:00Z'))).toBeGreaterThanOrEqual(1);
     expect(await prisma.session.count({ where: { staffId } })).toBe(0);
   });
 

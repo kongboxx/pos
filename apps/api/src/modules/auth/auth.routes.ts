@@ -7,17 +7,20 @@
  * session.
  */
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import {
   loginRequestSchema,
+  OFFICE_SESSION_COOKIE_NAME,
   ROLE_PERMISSIONS,
   SESSION_COOKIE_NAME,
   SESSION_TTL_SECONDS,
   parsePromptPayId,
   uuidSchema,
   type MeResponse,
+  type SessionUser,
 } from '@pos/shared';
+import type { SessionSurface } from '@prisma/client';
 import {
   listLoginBranches,
   resolveLoginBranch,
@@ -31,6 +34,63 @@ import { requireAuth } from './guards.js';
 import { AuthService } from './auth.service.js';
 
 const staffListQuerySchema = z.object({ branchId: uuidSchema.optional() });
+
+/**
+ * Signs a token for a fresh session row and puts it in the right cookie.
+ *
+ * Shared by both doors so the cookie flags cannot drift apart between them —
+ * a `secure` that is set on one login and forgotten on the other is the kind
+ * of difference nobody notices until a session is riding over plain http.
+ */
+async function issueSessionCookie(
+  app: FastifyInstance,
+  reply: FastifyReply,
+  input: {
+    user: SessionUser;
+    surface: SessionSurface;
+    ttlSeconds: number;
+    isProduction: boolean;
+    userAgent?: string | undefined;
+    ip?: string | undefined;
+  },
+): Promise<void> {
+  const session = await app.sessions.issue({
+    branchId: input.user.branchId,
+    staffId: input.user.staffId,
+    surface: input.surface,
+    ttlSeconds: input.ttlSeconds,
+    userAgent: input.userAgent,
+    ip: input.ip,
+  });
+
+  // `jti`, not jsonwebtoken's `jwtid`: @fastify/jwt v9 signs with fast-jwt,
+  // which takes the claim under its own name and silently ignores anything it
+  // does not recognise. The wrong name costs nothing at sign time and 401s
+  // every request afterwards.
+  //
+  // `expiresIn` is repeated here rather than inherited: passing any options to
+  // `sign` REPLACES the plugin-level ones (jwt.js `mergeOptionsWithKey`), so a
+  // token signed without it would never expire on its own. Seconds, because
+  // @fastify/jwt converts a bare number to ms for fast-jwt on the way through.
+  const token = app.jwt.sign(input.user, {
+    expiresIn: input.ttlSeconds,
+    jti: session.id,
+  });
+
+  const name = input.surface === 'OFFICE' ? OFFICE_SESSION_COOKIE_NAME : SESSION_COOKIE_NAME;
+
+  reply.setCookie(name, token, {
+    httpOnly: true,
+    // The tablet talks to the API over plain http on the shop LAN, so a Secure
+    // cookie would simply never be sent. It goes on in production.
+    secure: input.isProduction,
+    // Lax, not None: each site and the API are same-site in production. None
+    // would require Secure and would open the cookie up to cross-site POSTs.
+    sameSite: 'lax',
+    path: '/',
+    maxAge: input.ttlSeconds,
+  });
+}
 
 export function registerAuthRoutes(app: FastifyInstance, options: { env: Env }): void {
   const service = new AuthService(prisma);
@@ -86,25 +146,37 @@ export function registerAuthRoutes(app: FastifyInstance, options: { env: Env }):
       });
     }
 
-    const token = app.jwt.sign(result.user, { expiresIn: SESSION_TTL_SECONDS });
+    await issueSessionCookie(app, reply, {
+      user: result.user,
+      surface: 'POS',
+      ttlSeconds: SESSION_TTL_SECONDS,
+      isProduction,
+      userAgent: request.headers['user-agent'],
+      ip: request.ip,
+    });
 
-    return reply
-      .setCookie(SESSION_COOKIE_NAME, token, {
-        httpOnly: true,
-        // The tablet talks to the API over plain http on the shop LAN, so a
-        // Secure cookie would simply never be sent. It goes on in production.
-        secure: isProduction,
-        // Lax, not None: the PWA and the API are same-site in production. None
-        // would require Secure and would open the cookie up to cross-site POSTs.
-        sameSite: 'lax',
-        path: '/',
-        maxAge: SESSION_TTL_SECONDS,
-      })
-      .send({ user: result.user, permissions: ROLE_PERMISSIONS[result.user.role] });
+    return reply.send({ user: result.user, permissions: ROLE_PERMISSIONS[result.user.role] });
   });
 
-  app.post('/auth/logout', async (_request, reply) => {
-    return reply.clearCookie(SESSION_COOKIE_NAME, { path: '/' }).send({ ok: true });
+  /**
+   * Ends the session, on the server and in the browser.
+   *
+   * `requireAuth` rather than open: logging out has to know WHICH session to
+   * kill, and the only trustworthy answer is the one in the token. An open
+   * endpoint could clear a cookie but never revoke a row.
+   *
+   * Both cookies are cleared regardless of which one arrived. They are on
+   * different hosts in production so only one can be present, and clearing a
+   * cookie that was not there costs nothing — while leaving one behind after a
+   * dev session that hopped between :5173 and :5174 costs an hour of confusion.
+   */
+  app.post('/auth/logout', { preHandler: requireAuth }, async (request, reply) => {
+    await app.sessions.revoke(request.user.jti);
+
+    return reply
+      .clearCookie(SESSION_COOKIE_NAME, { path: '/' })
+      .clearCookie(OFFICE_SESSION_COOKIE_NAME, { path: '/' })
+      .send({ ok: true });
   });
 
   /**

@@ -17,10 +17,32 @@ import { z } from 'zod';
 import { Permission } from './permissions.js';
 import { pinSchema, roleSchema, uuidSchema } from './schemas.js';
 
-/** How long a session lasts. One long shift, so nobody re-logs in mid-service. */
+/** How long a till session lasts. One long shift, so nobody re-logs in mid-service. */
 export const SESSION_TTL_SECONDS = 12 * 60 * 60;
 
+/**
+ * How long a back office session lasts.
+ *
+ * Shorter than the till's on purpose. A cashier who is signed out mid-service
+ * is a queue at the counter; an owner who is signed out is one password on a
+ * machine that is not a tablet bolted to a counter — and this session can read
+ * every wage in the shop from anywhere on the internet.
+ */
+export const OFFICE_SESSION_TTL_SECONDS = 8 * 60 * 60;
+
 export const SESSION_COOKIE_NAME = 'pos_session';
+
+/**
+ * A DIFFERENT cookie for the back office, not the same name on another host.
+ *
+ * Cookies ignore the port. In dev the till is localhost:5173 and the office is
+ * localhost:5174, which is one cookie jar — one name would mean logging into
+ * the office kicks the till out, and back, all day. In production the hosts
+ * differ so it would work either way, and it is still worth having: an office
+ * cookie that cannot be presented as a till cookie is the split being true in
+ * the browser rather than only in the design.
+ */
+export const OFFICE_SESSION_COOKIE_NAME = 'office_session';
 
 /** Wrong PINs allowed before the account is frozen. */
 export const MAX_PIN_ATTEMPTS = 5;

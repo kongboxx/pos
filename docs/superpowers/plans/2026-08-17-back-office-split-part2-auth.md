@@ -1000,7 +1000,7 @@ own instead of buried under a new file."
 >
 > **ผลข้างเคียงที่ตั้งใจ:** token เก่าทุกใบไม่มี `jti` จึงถูกปฏิเสธหมดตอน deploy — ทุกคนต้องล็อกอินใหม่หนึ่งครั้ง · ยอมรับได้และดีกว่าทางเลือกอื่น (ยอมรับ token ไม่มี `jti` ไปก่อน = เปิดช่องทิ้งไว้ 12 ชั่วโมงโดยไม่มีใครรู้ว่าปิดเมื่อไหร่)
 
-- [ ] **Step 1: เพิ่มค่าคงที่ใน `@pos/shared`**
+- [x] **Step 1: เพิ่มค่าคงที่ใน `@pos/shared`**
 
 `packages/shared/src/auth.ts` — แทนที่บรรทัด 20–23:
 
@@ -1033,7 +1033,7 @@ export const SESSION_COOKIE_NAME = 'pos_session';
 export const OFFICE_SESSION_COOKIE_NAME = 'office_session';
 ```
 
-- [ ] **Step 2: เขียนเทสต์ที่ยังไม่ผ่าน**
+- [x] **Step 2: เขียนเทสต์ที่ยังไม่ผ่าน**
 
 เพิ่มลงท้าย `apps/api/src/modules/auth/auth.routes.test.ts` (ใน describe `/auth/me` แทนที่เทสต์ `clears the session cookie on logout` เดิม — คอมเมนต์ยาวเหนือมันบรรยายช่องที่ task นี้เพิ่งปิด จึงต้องไปด้วย):
 
@@ -1150,7 +1150,7 @@ import {
 } from '@pos/shared';
 ```
 
-- [ ] **Step 3: รันแล้วดูให้แน่ใจว่าแดง**
+- [x] **Step 3: รันแล้วดูให้แน่ใจว่าแดง**
 
 ```bash
 pnpm build:shared && pnpm --filter @pos/api test -- src/modules/auth/auth.routes.test.ts
@@ -1158,7 +1158,7 @@ pnpm build:shared && pnpm --filter @pos/api test -- src/modules/auth/auth.routes
 
 คาดหวัง: FAIL — `replayed.statusCode` เป็น 200 ไม่ใช่ 401 และ `prisma.session.findFirst` คืน null
 
-- [ ] **Step 4: ให้ app ถือ `SessionService` หนึ่งตัว**
+- [x] **Step 4: ให้ app ถือ `SessionService` หนึ่งตัว**
 
 `apps/api/src/app.ts` — เพิ่ม import:
 
@@ -1188,7 +1188,7 @@ declare module 'fastify' {
 app.decorate('sessions', new SessionService(prisma, env.JWT_SECRET));
 ```
 
-- [ ] **Step 5: เขียน `guards.ts` ใหม่ทั้งไฟล์**
+- [x] **Step 5: เขียน `guards.ts` ใหม่ทั้งไฟล์**
 
 แทนที่ `apps/api/src/modules/auth/guards.ts` ทั้งไฟล์:
 
@@ -1314,7 +1314,7 @@ export function requirePermission(
 }
 ```
 
-- [ ] **Step 6: ให้ `/auth/login` ออกแถว `Session` แล้ว logout เพิกถอน**
+- [x] **Step 6: ให้ `/auth/login` ออกแถว `Session` แล้ว logout เพิกถอน**
 
 `apps/api/src/modules/auth/auth.routes.ts` — เพิ่ม import:
 
@@ -1429,7 +1429,7 @@ app.post('/auth/logout', { preHandler: requireAuth }, async (request, reply) => 
 });
 ```
 
-- [ ] **Step 7: รันเทสต์ auth**
+- [x] **Step 7: รันเทสต์ auth**
 
 ```bash
 pnpm build:shared && pnpm --filter @pos/api test -- src/modules/auth
@@ -1439,7 +1439,7 @@ pnpm build:shared && pnpm --filter @pos/api test -- src/modules/auth
 
 > **ถ้า `logout` เทสต์อื่นแดงเพราะเดิมเรียกได้โดยไม่มีคุกกี้** — นั่นคือการเปลี่ยนพฤติกรรมที่ตั้งใจ (logout ต้องมีเซสชันถึงจะเพิกถอนได้) แก้เทสต์นั้นให้ล็อกอินก่อน แล้วบันทึกไว้ใต้ task นี้
 
-- [ ] **Step 8: รันเทสต์ API ทั้งชุด — ที่นี่คือจุดที่จะเจอของพัง**
+- [x] **Step 8: รันเทสต์ API ทั้งชุด — ที่นี่คือจุดที่จะเจอของพัง**
 
 ```bash
 pnpm --filter @pos/api test
@@ -1453,7 +1453,24 @@ grep -rn "jwtVerify" apps/api/src
 
 คาดหวัง: ไม่เหลือที่ไหนนอกจากที่เพิ่งลบไป ถ้าเจอเพิ่มให้เปลี่ยนไปใช้ `requireAuth` แล้วบันทึกไว้
 
-- [ ] **Step 9: เทสต์ทั้ง workspace แล้ว commit**
+> **ผลจริง 2026-08-17** — `grep` เหลือแค่คำว่า `jwtVerify` ในคอมเมนต์ของ `guards.ts` เอง · API ทั้งชุด 23 ไฟล์ 355 ผ่าน ไม่มี route ไหนพึ่งของเดิม
+>
+> **แผนเขียนชื่อ option ผิด และเทสต์จับได้:** แผนบอกให้ใช้ `jwtid` พร้อมคอมเมนต์ว่า "jwtid is jsonwebtoken's name for the jti claim" — แต่ `@fastify/jwt` v9 เซ็นด้วย **fast-jwt** ไม่ใช่ jsonwebtoken และ fast-jwt รับ claim นี้ในชื่อ `jti` ตรง ๆ · ผลคือ token เซ็นผ่านโดยไม่มี `jti` เลย แล้ว `/auth/me` 401 ทุกครั้งหลังล็อกอินสำเร็จ ซึ่งเป็นอาการเดียวกับที่คอมเมนต์ในแผนเตือนไว้เองเป๊ะ
+>
+> อีกเรื่องที่เจอตอนแก้: `app.jwt.sign(payload, options)` **แทนที่** sign options ระดับ plugin ทั้งก้อน (`mergeOptionsWithKey` ใน `jwt.js`) ไม่ได้ merge · ถ้าไม่ส่ง `expiresIn` มาด้วย token จะไม่มีวันหมดอายุเอง · หน่วยเป็น**วินาที** เพราะ `convertTemporalProps` คูณ 1000 ให้ก่อนส่งต่อ fast-jwt
+>
+> โค้ดที่ถูกต้อง:
+>
+> ```ts
+> const token = app.jwt.sign(input.user, {
+>   expiresIn: input.ttlSeconds,
+>   jti: session.id,
+> });
+> ```
+>
+> **เทสต์ purge ต้องผ่อนลง:** `purgeExpired` ลบทั้งฐานข้อมูลตามการออกแบบ แต่ไฟล์เทสต์อื่นล็อกอินใส่ฐานเดียวกันและทิ้งแถวไว้ · `toBe(1)` จึงกลายเป็น `expected 7 to be 1` ตอนรันทั้งชุด (ผ่านตอนรันไฟล์เดียว) · เปลี่ยนเป็น `toBeGreaterThanOrEqual(1)` แล้วยืนยันด้วย `count({ where: { staffId } })` แทน ซึ่งเป็นสิ่งที่เทสต์นี้ตั้งใจจะพิสูจน์จริง ๆ
+
+- [x] **Step 9: เทสต์ทั้ง workspace แล้ว commit**
 
 ```bash
 pnpm test

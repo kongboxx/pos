@@ -15,8 +15,10 @@ import jwt from '@fastify/jwt';
 import websocket from '@fastify/websocket';
 import { SESSION_COOKIE_NAME, SESSION_TTL_SECONDS } from '@pos/shared';
 import { ZodError } from 'zod';
+import { prisma } from './db.js';
 import type { Env } from './env.js';
 import { registerAuthRoutes } from './modules/auth/auth.routes.js';
+import { SessionService } from './modules/auth/session.service.js';
 import { registerBranchRoutes } from './modules/branch/branch.routes.js';
 import { registerTaxDocRoutes } from './modules/docs/tax-doc.routes.js';
 import { registerHealthRoutes } from './modules/health/health.routes.js';
@@ -33,6 +35,13 @@ import { registerPayrollRoutes } from './modules/staff/payroll.routes.js';
 import { registerStaffRoutes } from './modules/staff/staff.routes.js';
 import { registerTableAdminRoutes } from './modules/tables/table-admin.routes.js';
 import { registerLiveRoutes } from './realtime/live.routes.js';
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    /** Shared by the guards and both login routes. See session.service.ts. */
+    sessions: SessionService;
+  }
+}
 
 export async function buildApp(env: Env): Promise<FastifyInstance> {
   const app = Fastify({
@@ -81,6 +90,12 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   // the socket is authenticated by the preHandler exactly like a GET — no
   // second token scheme, and no credential in a query string.
   await app.register(websocket);
+
+  // One instance for the whole app: the guards read it on every request and
+  // both login routes write through it. Keyed with the JWT secret because the
+  // only thing it needs a secret for is the IP hash, and one secret to rotate
+  // beats two.
+  app.decorate('sessions', new SessionService(prisma, env.JWT_SECRET));
 
   // MUST be set before the route plugins are registered.
   //
