@@ -2584,7 +2584,7 @@ be limited on different terms."
 
 > **ข้อจำกัดที่ต้องพูดตรง ๆ:** การตรวจ `Host` เป็นกำแพงจริงก็ต่อเมื่อ API เข้าถึงตรง ๆ ไม่ได้ · ตอนนี้ API ฟังที่ `0.0.0.0:3001` ใครยิงตรงพร้อม header `Host:` ปลอมก็ผ่าน · **แผนที่ 3 คือคนที่ทำให้กำแพงนี้จริง** (bind localhost + reverse proxy) · สิ่งที่ task นี้ให้จริงตอนนี้คือ rate limit ต่อ IP ซึ่งไม่พึ่ง proxy · เขียนข้อจำกัดนี้ไว้ในคอมเมนต์ของ `host-guard.ts` ด้วย
 
-- [ ] **Step 1: ย้าย `RateLimiter` ขึ้นมาให้สองโมดูลใช้ได้**
+- [x] **Step 1: ย้าย `RateLimiter` ขึ้นมาให้สองโมดูลใช้ได้**
 
 ```bash
 git mv apps/api/src/modules/qr/rate-limit.ts apps/api/src/rate-limit.ts
@@ -2601,7 +2601,7 @@ import { RateLimiter } from '../../rate-limit.js';
 
 แก้ import ใน `apps/api/src/rate-limit.test.ts` ให้ชี้ `./rate-limit.js`
 
-- [ ] **Step 2: แก้คอมเมนต์หัวไฟล์ที่ตอนนี้ผิดแล้ว**
+- [x] **Step 2: แก้คอมเมนต์หัวไฟล์ที่ตอนนี้ผิดแล้ว**
 
 `apps/api/src/rate-limit.ts` — คอมเมนต์เดิมยืนยันว่า "KEYED BY TABLE TOKEN, NOT BY IP" ซึ่งจะกลายเป็นคำโกหกทันทีที่ auth ใช้มันแบบ keyed by IP · แทนที่บล็อกคอมเมนต์บรรทัด 1–17 ทั้งหมด:
 
@@ -2630,7 +2630,7 @@ import { RateLimiter } from '../../rate-limit.js';
  */
 ```
 
-- [ ] **Step 3: เขียนเทสต์ของ host guard ที่ยังไม่ผ่าน**
+- [x] **Step 3: เขียนเทสต์ของ host guard ที่ยังไม่ผ่าน**
 
 สร้าง `apps/api/src/modules/auth/host-guard.test.ts`:
 
@@ -2690,7 +2690,7 @@ describe('isTillHost', () => {
 });
 ```
 
-- [ ] **Step 4: รันแล้วดูให้แน่ใจว่าแดง**
+- [x] **Step 4: รันแล้วดูให้แน่ใจว่าแดง**
 
 ```bash
 pnpm --filter @pos/api test -- src/modules/auth/host-guard.test.ts
@@ -2698,7 +2698,7 @@ pnpm --filter @pos/api test -- src/modules/auth/host-guard.test.ts
 
 คาดหวัง: FAIL — `Cannot find module './host-guard.js'`
 
-- [ ] **Step 5: เขียน `host-guard.ts`**
+- [x] **Step 5: เขียน `host-guard.ts`**
 
 สร้าง `apps/api/src/modules/auth/host-guard.ts`:
 
@@ -2758,7 +2758,7 @@ export function tillOnly(
 }
 ```
 
-- [ ] **Step 6: เพิ่ม `TILL_HOSTS` ใน env**
+- [x] **Step 6: เพิ่ม `TILL_HOSTS` ใน env**
 
 `apps/api/src/env.ts` — เพิ่มใน `envSchema` ต่อจาก `WEB_ORIGIN`:
 
@@ -2805,7 +2805,7 @@ it('splits TILL_HOSTS the same way as WEB_ORIGIN', () => {
 # TILL_HOSTS="shop.example.com"
 ```
 
-- [ ] **Step 7: ติดกำแพงและตัวนับเข้ากับ route**
+- [x] **Step 7: ติดกำแพงและตัวนับเข้ากับ route**
 
 `apps/api/src/modules/auth/auth.routes.ts` — เพิ่ม import:
 
@@ -2893,7 +2893,7 @@ const officeLoginLimit = new RateLimiter(10, 60_000);
     const body = officeLoginRequestSchema.parse(request.body ?? {});
 ```
 
-- [ ] **Step 8: เขียนเทสต์ของ route**
+- [x] **Step 8: เขียนเทสต์ของ route**
 
 เพิ่มใน `apps/api/src/modules/auth/auth.routes.test.ts`:
 
@@ -2947,7 +2947,7 @@ export async function buildTestApp(
 }
 ```
 
-- [ ] **Step 9: รันเทสต์ API ทั้งชุด**
+- [x] **Step 9: รันเทสต์ API ทั้งชุด**
 
 ```bash
 pnpm --filter @pos/api test
@@ -2955,7 +2955,7 @@ pnpm --filter @pos/api test
 
 คาดหวัง: PASS ทั้งหมด · **เทสต์ qr ต้องยังเขียว** — ถ้าแดงแปลว่า import ของ `RateLimiter` ยังไม่ครบ
 
-- [ ] **Step 10: เทสต์ทั้ง workspace แล้ว commit**
+- [x] **Step 10: เทสต์ทั้ง workspace แล้ว commit**
 
 ```bash
 pnpm test

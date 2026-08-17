@@ -1,19 +1,24 @@
 /**
- * A small fixed-window counter for the endpoints that have no login.
+ * A small fixed-window counter, used by two callers that want opposite keys.
  *
- * KEYED BY TABLE TOKEN, NOT BY IP. Everyone in the shop is behind one router,
- * so an IP-keyed limiter would let one phone stuck in a retry loop lock every
- * other customer out of ordering. The token is also the thing being abused, so
- * it is the thing worth counting.
+ * THE QR ORDERING PAGE KEYS BY TABLE TOKEN. Everyone in the shop is behind one
+ * router, so keying by IP there would let one phone stuck in a retry loop lock
+ * every other customer out of ordering. The token is also the thing being
+ * abused, so it is the thing worth counting.
+ *
+ * THE LOGIN ENDPOINTS KEY BY IP, for the mirror-image reason. Keying by account
+ * is already done (the lockout columns on Staff) and it cannot see the attack
+ * that matters here: one host on the internet working through a list of
+ * addresses, one guess each, never tripping any single account's counter.
  *
  * Fixed windows are crude — a caller can spend a whole window's budget at the
- * end of one and again at the start of the next. That is fine here. This is not
- * defending a bank; it is stopping one phone from opening a hundred bills while
- * a human is not looking, and the approval queue is what actually decides
- * whether any of it becomes food.
+ * end of one and again at the start of the next. That is fine for both uses.
+ * This is not defending a bank; it is turning "unlimited guesses" into "a few
+ * per minute", which is the difference between a weekend and a millennium.
  *
- * In memory, like the WebSocket hub, because this is one process on a mini-PC
- * in the shop. A shared store would be a moving part with nothing to move.
+ * In memory, like the WebSocket hub, because this is one process on one box. A
+ * shared store would be a moving part with nothing to move. The cost is that a
+ * restart forgets every counter, which an attacker cannot cause on demand.
  */
 
 export interface RateLimitDecision {

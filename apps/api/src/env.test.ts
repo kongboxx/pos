@@ -58,6 +58,15 @@ describe('loadEnv', () => {
     expect(() => loadEnv({ ...VALID, WEB_ORIGIN: '  ' })).toThrow(/WEB_ORIGIN/);
   });
 
+  it('leaves TILL_HOSTS empty by default, which means the check does not run', () => {
+    expect(loadEnv(VALID).TILL_HOSTS).toEqual([]);
+  });
+
+  it('splits TILL_HOSTS the same way as WEB_ORIGIN', () => {
+    const env = loadEnv({ ...VALID, TILL_HOSTS: 'shop.example.com , till.example.com' });
+    expect(env.TILL_HOSTS).toEqual(['shop.example.com', 'till.example.com']);
+  });
+
   it('refuses to boot without a print agent token', () => {
     // Without it the /print/agent/* routes would accept anyone on the LAN.
     const { PRINT_AGENT_TOKEN: _omitted, ...withoutToken } = VALID;

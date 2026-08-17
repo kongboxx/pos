@@ -334,3 +334,31 @@ describe('signing out everywhere', () => {
     expect(check.statusCode).toBe(200);
   });
 });
+
+describe('the endpoints that used to be open to everyone', () => {
+  it('still answers on the till host when hosts are configured', async () => {
+    const tillApp = await buildTestApp({ TILL_HOSTS: 'shop.example.com' });
+    const response = await tillApp.inject({
+      method: 'GET',
+      url: '/api/auth/staff',
+      headers: { host: 'shop.example.com' },
+    });
+    expect(response.statusCode).toBe(200);
+    await tillApp.close();
+  });
+
+  it('404s on the office host, so the staff list is not on the internet', async () => {
+    const tillApp = await buildTestApp({ TILL_HOSTS: 'shop.example.com' });
+    for (const url of ['/api/auth/staff', '/api/auth/branches']) {
+      const response = await tillApp.inject({
+        method: 'GET',
+        url,
+        headers: { host: 'office.example.com' },
+      });
+      // 404, not 403: a 403 confirms it is there.
+      expect(response.statusCode).toBe(404);
+      expect(response.body).not.toMatch(/fullName/);
+    }
+    await tillApp.close();
+  });
+});

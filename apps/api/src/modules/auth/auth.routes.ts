@@ -32,7 +32,9 @@ import {
 import { prisma } from '../../db.js';
 import type { Env } from '../../env.js';
 import { formatDateColumn } from '../orders/order.mapper.js';
+import { RateLimiter } from '../../rate-limit.js';
 import { requireAuth } from './guards.js';
+import { tillOnly } from './host-guard.js';
 import { AuthService } from './auth.service.js';
 import { OfficeAuthService } from './office-auth.service.js';
 
@@ -99,22 +101,39 @@ export function registerAuthRoutes(app: FastifyInstance, options: { env: Env }):
   const service = new AuthService(prisma);
   const officeService = new OfficeAuthService(prisma);
   const isProduction = options.env.NODE_ENV === 'production';
+  const fromTill = tillOnly(options.env.TILL_HOSTS);
+
+  /**
+   * Per-IP, on top of the per-account lockouts that already exist.
+   *
+   * The account counters cannot see the attack that matters once this is on
+   * the internet: one host working through a list of accounts, a guess each,
+   * never tripping any single counter. Twenty attempts a minute is far more
+   * than a person who mistyped and far less than a script needs.
+   *
+   * Separate limiters for the two doors. A shop where every tablet is behind
+   * one router shares an IP, so the till needs headroom the office does not —
+   * and an office login is one person, once a day, from one machine.
+   */
+  const tillLoginLimit = new RateLimiter(20, 60_000);
+  const officeLoginLimit = new RateLimiter(10, 60_000);
 
   /**
    * The shops on the login screen (Step 10).
    *
-   * Open, like the staff list below it, and for the same reason: it is a list
-   * of shop names on a device that is already inside the shop's wifi. It is
-   * also the only pre-session endpoint that knows about more than one branch —
-   * everything after login is scoped by the token.
+   * Still open, but no longer to everyone: `fromTill` means it answers only on
+   * the till's own domain (see host-guard.ts, including what that check is and
+   * is not worth). It used to be justified as "a list of shop names on a device
+   * already inside the shop's wifi" — that sentence stopped being true the day
+   * the back office moved to the open internet.
    */
-  app.get('/auth/branches', async (_request, reply) => {
+  app.get('/auth/branches', { preHandler: fromTill }, async (_request, reply) => {
     const branches = await listLoginBranches(prisma);
     return reply.send({ branches });
   });
 
-  /** Names for the login screen. Deliberately open — it holds no secret. */
-  app.get('/auth/staff', async (request, reply) => {
+  /** Names for the login screen. Till domain only — see /auth/branches above. */
+  app.get('/auth/staff', { preHandler: fromTill }, async (request, reply) => {
     const query = staffListQuerySchema.parse(request.query ?? {});
     const branch = await resolveLoginBranch(prisma, query.branchId);
     const staff = await service.listStaff(branch.id);
@@ -125,6 +144,14 @@ export function registerAuthRoutes(app: FastifyInstance, options: { env: Env }):
   });
 
   app.post('/auth/login', async (request, reply) => {
+    const limit = tillLoginLimit.check(request.ip);
+    if (!limit.allowed) {
+      return reply
+        .status(429)
+        .header('Retry-After', String(limit.retryAfterSeconds))
+        .send({ error: 'TOO_MANY_ATTEMPTS', message: 'ลองเข้าสู่ระบบถี่เกินไป กรุณารอสักครู่' });
+    }
+
     const body = loginRequestSchema.parse(request.body ?? {});
     const branch = body.branchId
       ? await resolveLoginBranch(prisma, body.branchId)
@@ -172,6 +199,14 @@ export function registerAuthRoutes(app: FastifyInstance, options: { env: Env }):
    * one policy having to serve a tablet in a shop and a laptop on the internet.
    */
   app.post('/auth/office/login', async (request, reply) => {
+    const limit = officeLoginLimit.check(request.ip);
+    if (!limit.allowed) {
+      return reply
+        .status(429)
+        .header('Retry-After', String(limit.retryAfterSeconds))
+        .send({ error: 'TOO_MANY_ATTEMPTS', message: 'ลองเข้าสู่ระบบถี่เกินไป กรุณารอสักครู่' });
+    }
+
     const body = officeLoginRequestSchema.parse(request.body ?? {});
     const result = await officeService.login(body.email, body.password);
 

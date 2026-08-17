@@ -26,7 +26,7 @@ import { liveHub } from '../../realtime/hub.js';
 import { PrintService } from '../print/print.service.js';
 import { OrderService } from '../orders/order.service.js';
 import { QrService } from './qr.service.js';
-import { RateLimiter } from './rate-limit.js';
+import { RateLimiter } from '../../rate-limit.js';
 
 const tokenParams = z.object({ token: qrTokenSchema });
 

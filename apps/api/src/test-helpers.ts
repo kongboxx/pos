@@ -28,13 +28,16 @@ export const SEED_PINS: Readonly<Record<Role, string>> = {
   STAFF: '3333',
 };
 
-export async function buildTestApp(): Promise<FastifyInstance> {
+export async function buildTestApp(
+  overrides: Record<string, string> = {},
+): Promise<FastifyInstance> {
   const env = loadEnv({
     DATABASE_URL:
       process.env['DATABASE_URL'] ?? 'postgresql://pos:pos_dev_password@localhost:5432/pos_dev',
     JWT_SECRET: 'test-jwt-secret-value-long-enough',
     PRINT_AGENT_TOKEN: TEST_AGENT_TOKEN,
     NODE_ENV: 'test',
+    ...overrides,
   });
   const app = await buildApp(env);
   await app.ready();

@@ -58,6 +58,24 @@ const envSchema = z.object({
       (list) => list.every(isHttpOrigin),
       'WEB_ORIGIN must be full http(s) origins separated by commas, e.g. http://localhost:5173,http://localhost:5174',
     ),
+
+  /**
+   * The host names the till is served on, comma-separated.
+   *
+   * `/auth/staff` and `/auth/branches` answer only to these. Leave it EMPTY in
+   * development: both apps reach the API as localhost:3001, so there is no
+   * Host that could tell them apart, and an empty list means the check does
+   * not run rather than that nothing matches. See host-guard.ts.
+   */
+  TILL_HOSTS: z
+    .string()
+    .default('')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry !== ''),
+    ),
 });
 
 export type Env = z.infer<typeof envSchema>;
