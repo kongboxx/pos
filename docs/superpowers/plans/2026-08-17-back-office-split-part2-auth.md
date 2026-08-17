@@ -333,7 +333,7 @@ till's. Nothing caught it because every office test stubs the api client."
 - Consumes: ไม่มี
 - Produces: `prisma.session` · `SessionSurface.POS` / `.OFFICE` · `Staff.email`, `Staff.passwordHash`, `Staff.totpSecret`, `Staff.failedLoginAttempts`, `Staff.loginLockedUntil` — Task 3 ถึง 10 ใช้ทั้งหมดนี้
 
-- [ ] **Step 1: เพิ่ม enum และ model ท้ายไฟล์ schema**
+- [x] **Step 1: เพิ่ม enum และ model ท้ายไฟล์ schema**
 
 ต่อท้าย `apps/api/prisma/schema.prisma` (หลัง model สุดท้าย):
 
@@ -385,7 +385,7 @@ model Session {
 }
 ```
 
-- [ ] **Step 2: เพิ่มคอลัมน์บน `Staff`**
+- [x] **Step 2: เพิ่มคอลัมน์บน `Staff`**
 
 ใน `model Staff` — เพิ่มต่อจากบล็อก PIN brute-force protection (หลังบรรทัด `lastLoginAt DateTime?`):
 
@@ -417,7 +417,7 @@ model Session {
   sessions            Session[]
 ```
 
-- [ ] **Step 3: เพิ่มความสัมพันธ์บน `Branch`**
+- [x] **Step 3: เพิ่มความสัมพันธ์บน `Branch`**
 
 ใน `model Branch` หาบล็อกที่ list relation ทั้งหมด แล้วเพิ่ม:
 
@@ -427,7 +427,7 @@ model Session {
 
 > หาไม่เจอให้ `grep -n "auditLogs" apps/api/prisma/schema.prisma` — `Branch` มีบรรทัดนั้นอยู่แล้ว ใส่ถัดจากมัน
 
-- [ ] **Step 4: สร้าง migration**
+- [x] **Step 4: สร้าง migration**
 
 ```bash
 pnpm --filter @pos/api exec prisma migrate dev --name step11_office_auth
@@ -450,7 +450,21 @@ CREATE INDEX "sessions_expiresAt_idx" ON "sessions"("expiresAt");
 
 **ถ้าเห็น `DROP TABLE` หรือ `DROP COLUMN` ให้หยุดทันที** — แปลว่า schema ถูกแก้เกินที่แผนบอก
 
-- [ ] **Step 5: เขียนเทสต์ที่พิสูจน์ว่า constraint จริง ไม่ใช่แค่ในไฟล์**
+> **ผลจริง 2026-08-17** — `prisma migrate dev` ใช้ไม่ได้ในเชลล์ที่ไม่ interactive: มันขึ้นคำเตือน "A unique constraint covering the columns `[email]` ... will be added" แล้วรอคำตอบ พอไม่มีคนตอบก็ตายด้วย `Prisma Migrate has detected that the environment is non-interactive`
+>
+> ทางที่ใช้แทนแล้วได้ผลเหมือนกัน:
+>
+> ```bash
+> pnpm --filter @pos/api exec prisma migrate diff \
+>   --from-schema-datasource prisma/schema.prisma \
+>   --to-schema-datamodel prisma/schema.prisma --script
+> # เอา SQL ที่ได้ไปวางใน prisma/migrations/20260817120000_step11_office_auth/migration.sql
+> pnpm --filter @pos/api exec prisma migrate deploy
+> ```
+>
+> SQL ที่ออกมาตรงกับที่แผนคาดไว้ทุกบรรทัด ไม่มี `DROP` · task หลัง ๆ ที่ต้องสร้าง migration ให้ใช้วิธีนี้
+
+- [x] **Step 5: เขียนเทสต์ที่พิสูจน์ว่า constraint จริง ไม่ใช่แค่ในไฟล์**
 
 สร้าง `apps/api/src/modules/auth/schema.test.ts`:
 
@@ -535,7 +549,7 @@ describe('the sessions table', () => {
 });
 ```
 
-- [ ] **Step 6: รันเทสต์**
+- [x] **Step 6: รันเทสต์**
 
 ```bash
 pnpm --filter @pos/api test -- src/modules/auth/schema.test.ts
@@ -543,7 +557,7 @@ pnpm --filter @pos/api test -- src/modules/auth/schema.test.ts
 
 คาดหวัง: PASS 3 ตัว
 
-- [ ] **Step 7: เทสต์ทั้ง workspace แล้ว commit**
+- [x] **Step 7: เทสต์ทั้ง workspace แล้ว commit**
 
 ```bash
 pnpm test

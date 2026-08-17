@@ -201,6 +201,7 @@ model Branch {
   prepBatches        PrepBatch[]
   shifts             Shift[]
   printJobs          PrintJob[]
+  sessions           Session[]
 
   @@index([isActive])
   @@map("branches")
@@ -232,6 +233,26 @@ model Staff {
   pinLockedUntil    DateTime?
   lastLoginAt       DateTime?
 
+  /// --- back office login (plan 2) ---
+  /// The username for office.<domain>. UNIQUE ACROSS THE WHOLE TABLE, not per
+  /// branch: the office login screen has no branch picker, so an email must
+  /// resolve to exactly one row and the branch comes from that row.
+  email String? @unique
+
+  /// bcrypt cost 12. NULL means this person cannot reach the back office at
+  /// all, whatever they know — which is the state every cashier stays in.
+  passwordHash String?
+
+  /// Reserved for TOTP (design doc D8). Nothing reads it yet. It exists now so
+  /// turning 2FA on later is a feature, not a migration on a live database.
+  totpSecret String?
+
+  /// The password twins of failedPinAttempts/pinLockedUntil. Separate counters
+  /// on purpose: locking someone out of the till because a bot is guessing at
+  /// their office password would take a working cashier off the floor.
+  failedLoginAttempts Int       @default(0)
+  loginLockedUntil    DateTime?
+
   startDate DateTime    @db.Date
   endDate   DateTime?   @db.Date
   status    StaffStatus @default(PROBATION)
@@ -261,6 +282,7 @@ model Staff {
   shifts              Shift[]
   creditNotesIssued   CreditNote[]     @relation("CreditNoteIssuedBy")
   creditNotesApproved CreditNote[]     @relation("CreditNoteApprovedBy")
+  sessions            Session[]
 
   /// NOT a "no two staff share a PIN" guarantee: bcrypt salts every hash, so
   /// two people with PIN 1234 produce different strings and both insert fine.
@@ -1182,4 +1204,50 @@ model Shift {
 
   @@index([branchId, openedAt])
   @@map("shifts")
+}
+
+// ---------------------------------------------------------------------------
+// Sessions (plan 2)
+// ---------------------------------------------------------------------------
+
+enum SessionSurface {
+  POS
+  OFFICE
+}
+
+/// One row per login that is still worth honouring.
+///
+/// The JWT carries this row's id as its `jti` and every request checks the row
+/// is neither revoked nor expired. That one extra indexed query per request is
+/// what turns logout from "stop sending the cookie" into "this token is dead",
+/// and it is what lets an owner cut off a phone that walked out of the shop
+/// without waiting twelve hours for the token to lapse on its own.
+///
+/// Expired rows are KEPT for 90 days (scripts/purge-sessions.ts) so "who was
+/// logged in on the night the till came up short" is a question with an answer.
+model Session {
+  id       String @id @default(uuid())
+  branchId String
+  staffId  String
+
+  /// Which door this came through. Set by the route, never guessed from a
+  /// header — that is the whole reason the two logins are separate endpoints.
+  surface SessionSurface
+
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  userAgent String?
+  /// HMAC-SHA256 of the caller's IP, keyed with JWT_SECRET — never the raw IP,
+  /// and never a bare sha256 either: IPv4 has only four billion values, so an
+  /// unkeyed digest is a lookup table away from being the address itself.
+  ipHash String?
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  staff  Staff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId, revokedAt])
+  @@index([expiresAt])
+  @@map("sessions")
 }
