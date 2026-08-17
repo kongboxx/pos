@@ -10,7 +10,7 @@
  * drops. Nobody needs to read last month's P&L during a blackout.
  */
 
-import { createSessionStore, type PinCredentials } from '@pos/web-kit';
+import { createSessionStore, type OfficeCredentials } from '@pos/web-kit';
 import { officeApi } from './api-office.js';
 
-export const useSession = createSessionStore<PinCredentials>({ api: officeApi });
+export const useSession = createSessionStore<OfficeCredentials>({ api: officeApi });

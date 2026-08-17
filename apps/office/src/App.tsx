@@ -26,7 +26,7 @@ import { Permission } from '@pos/shared';
 import { path } from '@pos/web-kit';
 import { RequireAuth, RequirePermission } from './route-guards.js';
 import { useSession } from './session.js';
-import { LoginPage } from './pages/LoginPage.js';
+import { OfficeLoginPage } from './pages/OfficeLoginPage.js';
 import { AllBranchesPage } from './pages/AllBranchesPage.js';
 import { BranchesPage } from './pages/BranchesPage.js';
 import { DailyReportPage } from './pages/DailyReportPage.js';
@@ -62,7 +62,9 @@ export function App(): React.ReactElement {
       {/* Outside the guard, or logging in would redirect to itself forever. */}
       <Route
         path={path.login}
-        element={status === 'authenticated' ? <Navigate to={path.menu} replace /> : <LoginPage />}
+        element={
+          status === 'authenticated' ? <Navigate to={path.menu} replace /> : <OfficeLoginPage />
+        }
       />
 
       <Route element={<RequireAuth />}>

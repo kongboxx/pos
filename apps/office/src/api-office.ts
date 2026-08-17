@@ -5,17 +5,14 @@
  * office has no business holding a "pay this bill" call, and the till has no
  * business holding "pay this month's wages".
  *
- * The five auth methods are duplicated rather than shared. They are the one
- * place the two apps genuinely do the same thing today — and the one place
- * they are about to stop: plan 2 replaces this file's copy with an email
- * login while the till keeps its PIN. Sharing them now would have to be
- * unpicked then.
+ * The auth methods are no longer a copy of the till's. The office logs in with
+ * an email and a password against its own endpoint, and does not have the two
+ * pre-session lookups at all — the API refuses them on this host anyway.
  */
 
-import { createHttp, type ApiResult, type PinCredentials } from '@pos/web-kit';
+import { createHttp, type ApiResult, type OfficeCredentials } from '@pos/web-kit';
 import type {
   AllBranchesResponse,
-  BranchChoiceList,
   BranchCreateRequest,
   BranchDto,
   BranchListResponse,
@@ -42,7 +39,6 @@ import type {
   SessionUser,
   StaffCreateRequest,
   StaffListResponse,
-  StaffPublic,
   StaffRequest,
   TableQrResponse,
   TableRequest,
@@ -59,24 +55,15 @@ export const officeApi = {
   /* ---------------- auth ---------------- */
 
   /**
-   * The shops on the login screen (Step 10). Only ever more than one when the
-   * owner has opened a second branch, so the picker hides itself in a
-   * single-shop shop.
+   * The back office door. Email and password, not a PIN, and no list of who
+   * works here — see the design doc §5.2.
+   *
+   * `loginBranches` and `staffList` used to sit here and are gone: the API
+   * answers them only on the till's host now, and the office has no screen
+   * that wants them. Code that cannot call an endpoint cannot leak it.
    */
-  loginBranches: (): Promise<ApiResult<BranchChoiceList>> => request('/auth/branches'),
-
-  staffList: (
-    branchId?: string,
-  ): Promise<
-    ApiResult<{ branch: { id: string; name: string; branchCode: string }; staff: StaffPublic[] }>
-  > => request(branchId ? `/auth/staff?branchId=${branchId}` : '/auth/staff'),
-
-  login: (credentials: PinCredentials): Promise<ApiResult<{ user: SessionUser }>> =>
-    post('/auth/login', {
-      staffId: credentials.staffId,
-      pin: credentials.pin,
-      ...(credentials.branchId ? { branchId: credentials.branchId } : {}),
-    }),
+  login: (credentials: OfficeCredentials): Promise<ApiResult<{ user: SessionUser }>> =>
+    post('/auth/office/login', credentials),
 
   logout: (): Promise<ApiResult<{ ok: true }>> => post('/auth/logout'),
 

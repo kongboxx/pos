@@ -4054,7 +4054,7 @@ The office is about to hand it an email and a password instead."
 
 > **นี่คือหนี้ที่แผนที่ 1 จดไว้** · คอมเมนต์หัวไฟล์ของ `LoginPage.tsx` เดิมเขียนไว้เองว่าตัวแทนของมันต้องทดสอบสี่อย่าง: รหัสผิดล้างช่อง · บัญชีถูกแช่แข็งต้องบอก · สำเร็จแล้วไปหน้าเมนู · และ**ห้ามมีรายชื่อพนักงาน** · เทสต์ในขั้นที่ 2 คือสี่ข้อนั้นตรง ๆ
 
-- [ ] **Step 1: ตัด endpoint ที่หลังร้านไม่มีสิทธิ์เรียกอีกแล้วออกจาก api client**
+- [x] **Step 1: ตัด endpoint ที่หลังร้านไม่มีสิทธิ์เรียกอีกแล้วออกจาก api client**
 
 `apps/office/src/api-office.ts` — ลบ `loginBranches` และ `staffList` ทิ้งทั้งสองตัว แล้วแทน `login`:
 
@@ -4085,7 +4085,7 @@ The office is about to hand it an email and a password instead."
 export const useSession = createSessionStore<OfficeCredentials>({ api: officeApi });
 ```
 
-- [ ] **Step 2: เขียนเทสต์ที่ยังไม่ผ่าน**
+- [x] **Step 2: เขียนเทสต์ที่ยังไม่ผ่าน**
 
 สร้าง `apps/office/src/pages/OfficeLoginPage.test.tsx`:
 
@@ -4233,7 +4233,7 @@ describe('the back office login screen', () => {
 });
 ```
 
-- [ ] **Step 3: รันแล้วดูให้แน่ใจว่าแดง**
+- [x] **Step 3: รันแล้วดูให้แน่ใจว่าแดง**
 
 ```bash
 pnpm --filter @pos/office test -- src/pages/OfficeLoginPage.test.tsx
@@ -4241,7 +4241,7 @@ pnpm --filter @pos/office test -- src/pages/OfficeLoginPage.test.tsx
 
 คาดหวัง: FAIL — `Cannot find module './OfficeLoginPage.js'`
 
-- [ ] **Step 4: เขียนหน้าจอ**
+- [x] **Step 4: เขียนหน้าจอ**
 
 สร้าง `apps/office/src/pages/OfficeLoginPage.tsx`:
 
@@ -4348,7 +4348,7 @@ export function OfficeLoginPage(): React.ReactElement {
 }
 ```
 
-- [ ] **Step 5: เปลี่ยน route แล้วลบหน้าเก่า**
+- [x] **Step 5: เปลี่ยน route แล้วลบหน้าเก่า**
 
 `apps/office/src/App.tsx` — เปลี่ยน import และ element:
 
@@ -4368,7 +4368,11 @@ git rm apps/office/src/pages/LoginPage.tsx
 
 > ถ้าบ่นว่า "staged content different" ให้ใช้ `git rm -f` (เจอมาแล้วในแผนที่ 1)
 
-- [ ] **Step 6: รันเทสต์ office**
+> **ผลจริง 2026-08-17:** ลบ `loginBranches`/`staffList` แล้ว type import `BranchChoiceList` กับ `StaffPublic` กลายเป็นของตาย — ทั้ง `tsc` (TS6196) และ ESLint จับ ต้องลบตามไปด้วย
+>
+> `vi.importActual<typeof import('react-router-dom')>` ที่แผนเขียนไว้ผิดกฎ `@typescript-eslint/consistent-type-imports` ของโปรเจกต์ ("`import()` type annotations are forbidden") · เปลี่ยนเป็น `import type * as ReactRouter` ที่หัวไฟล์แล้วอ้าง `typeof ReactRouter` แทน
+
+- [x] **Step 6: รันเทสต์ office**
 
 ```bash
 pnpm --filter @pos/office test
@@ -4376,7 +4380,7 @@ pnpm --filter @pos/office test
 
 คาดหวัง: PASS · 112 + 8 = 120 ตัว
 
-- [ ] **Step 7: ล็อกอินจริงด้วยมือ**
+- [x] **Step 7: ล็อกอินจริงด้วยมือ**
 
 ```bash
 pnpm db:seed:demo
@@ -4394,13 +4398,27 @@ pnpm db:seed:demo
 
 บันทึกสิ่งที่เห็นใต้ task นี้
 
-- [ ] **Step 8: เทสต์ทั้ง workspace แล้ว commit**
+> **ผลจริง 2026-08-17 — สิ่งที่เห็นตอนล็อกอินจริง**
+>
+> Browser pane ไม่ได้ถูกแสดงผลอยู่ (ไม่ compositing frames) การคลิกจริงเลยไม่ติด · ขับฟอร์มด้วย native value setter + `input` event + `form.requestSubmit()` แทน ซึ่งเป็นเส้นทางเดียวกับที่ React เห็นตอนคนพิมพ์จริง ไม่ใช่การเรียก store ตรง ๆ
+>
+> 1. **เข้าได้** → `POST /api/auth/office/login` 200 · เด้งไป `/office/menu` หัวข้อ "จัดการร้าน"
+> 2. **คุกกี้ชื่อถูก** → `set-cookie: office_session=…; Max-Age=28800; Path=/; HttpOnly; SameSite=Lax` · `document.cookie` ว่างเปล่า (httpOnly ทำงาน)
+> 3. **หน้าร้านไม่ถูกเตะ** → ล็อกอิน PIN ที่ `:5173` หลังจากหลังร้านล็อกอินแล้ว · ทั้งสองแท็บได้ `/auth/me` 200 พร้อมกัน และ reload หลังร้านยังอยู่ที่ `/office/menu`
+> 4. **รหัสผิด** → ช่องรหัสผ่านว่าง (`pwLen: 0`) อีเมลยังอยู่ `role="alert"` ว่า "อีเมลหรือรหัสผ่านไม่ถูกต้อง" ไม่ไปไหน
+> 5. **ออกจากระบบแล้วกด back** → `/auth/me` 401 · พิมพ์ `/office/menu` ตรง ๆ เด้งกลับ `/login`
+>
+> **ข้อสังเกตที่เจอเพิ่ม (เป็นเรื่องของ dev เท่านั้น):** `/auth/logout` ล้างคุกกี้ทั้งสองชื่อตามที่ Task 5 ตั้งใจ · บน localhost ทั้งสองแอปใช้ cookie jar เดียวกัน (คุกกี้ไม่สนพอร์ต) ดังนั้นกดออกจากระบบที่หลังร้านทำให้หน้าร้านหลุดไปด้วย — ยืนยันแล้วว่า `/auth/me` ของแท็บ `:5173` กลายเป็น 401 · บนโปรดักชันไม่เกิด เพราะ `office.<domain>` กับ `shop.<domain>` เป็นคนละโฮสต์ คุกกี้แยกกันจริง · **เซสชันของหน้าร้านไม่ได้ถูกเพิกถอน** มีแค่คุกกี้ที่ถูกล้าง — ล็อกอินใหม่ก็ใช้ได้ทันที
+
+- [x] **Step 8: เทสต์ทั้ง workspace แล้ว commit**
 
 ```bash
 pnpm test
 ```
 
 คาดหวัง: 1,219 ผ่าน
+
+> **ผลจริง 2026-08-17:** 1,218 ผ่าน — off-by-one เดิมจาก Task 6 · shared 413 · print-agent 15 · web-kit 14 · api 407 · office 120 · web 249
 
 ```bash
 git add apps/office
