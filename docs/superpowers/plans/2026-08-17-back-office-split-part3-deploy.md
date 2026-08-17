@@ -182,7 +182,7 @@ it('rejects anything other than true or false, instead of quietly meaning true',
 - [x] **Step 2: รันเทสต์ให้เห็นว่ามันแดง**
 
 ```bash
-pnpm --filter @pos/api test -- src/env.test.ts
+pnpm --filter @pos/api exec vitest run src/env.test.ts
 ```
 
 Expected: FAIL 3 ตัว — สองตัวแรกได้ `undefined` ไม่ใช่ `false`/`true` และตัวที่สามไม่ throw
@@ -221,7 +221,7 @@ Expected: FAIL 3 ตัว — สองตัวแรกได้ `undefined` 
 - [x] **Step 4: รันเทสต์ให้ผ่าน**
 
 ```bash
-pnpm --filter @pos/api test -- src/env.test.ts
+pnpm --filter @pos/api exec vitest run src/env.test.ts
 ```
 
 Expected: PASS ทั้งไฟล์
@@ -330,7 +330,7 @@ describe('with TRUST_PROXY off', () => {
 - [x] **Step 6: รันเทสต์ให้เห็นว่ามันแดง**
 
 ```bash
-pnpm --filter @pos/api test -- src/modules/auth/trust-proxy.test.ts
+pnpm --filter @pos/api exec vitest run src/modules/auth/trust-proxy.test.ts
 ```
 
 Expected: FAIL 1 ตัว จาก 3 (วัดแล้ว) — `gives two different clients two different budgets` ได้ 429
@@ -360,7 +360,7 @@ Expected: FAIL 1 ตัว จาก 3 (วัดแล้ว) — `gives two di
 - [x] **Step 8: รันเทสต์ให้ผ่าน**
 
 ```bash
-pnpm --filter @pos/api test -- src/modules/auth/trust-proxy.test.ts
+pnpm --filter @pos/api exec vitest run src/modules/auth/trust-proxy.test.ts
 ```
 
 Expected: PASS 3 ตัว
@@ -489,7 +489,7 @@ suite('what the built sites dial', () => {
 - [x] **Step 4: build แล้วรันเทสต์**
 
 ```bash
-pnpm build && pnpm --filter @pos/web test -- src/bundle-boundary.test.ts
+pnpm build && pnpm --filter @pos/web exec vitest run src/bundle-boundary.test.ts
 ```
 
 Expected: PASS ทั้งไฟล์ · ถ้า `dist/` ยังไม่มี ทั้ง suite จะข้ามตัวเองแล้วรายงานเป็น skipped
@@ -498,7 +498,7 @@ Expected: PASS ทั้งไฟล์ · ถ้า `dist/` ยังไม่�
 - [x] **Step 5: พิสูจน์ว่าเทสต์กัดจริง**
 
 ```bash
-mv apps/web/.env.production apps/web/.env.production.off && pnpm --filter @pos/web build && pnpm --filter @pos/web test -- src/bundle-boundary.test.ts
+mv apps/web/.env.production apps/web/.env.production.off && pnpm --filter @pos/web build && pnpm --filter @pos/web exec vitest run src/bundle-boundary.test.ts
 ```
 
 Expected: FAIL ที่ `the till carries no localhost API address` · จากนั้นคืนสภาพ:
@@ -639,11 +639,20 @@ git commit -m "ci: run typecheck, lint, format and the full suite on every push"
 git push
 ```
 
-- [ ] **Step 4: ดูผลรันแรก**
+- [x] **Step 4: ดูผลรันแรก**
 
 ```bash
 gh run watch
 ```
+
+**`gh` ไม่ได้ติดตั้งบนเครื่องที่ใช้ทำแผนนี้** (ทั้งใน Git Bash และบน Windows) · repo เป็นสาธารณะ
+จึงถาม REST API ตรง ๆ ได้โดยไม่ต้องยืนยันตัวตน — แทนที่ `<run-id>` ด้วยเลขจาก `?branch=` ก่อน:
+
+```bash
+curl -s "https://api.github.com/repos/kongboxx/pos/actions/runs?branch=design/back-office-deploy&per_page=1" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const r=JSON.parse(d).workflow_runs[0];console.log(r.id,r.status,r.conclusion??'',r.html_url)})"
+```
+
+**วัดจริง 2026-08-17:** เขียวตั้งแต่รันแรก · 13 ขั้นผ่านหมดใน 170 วินาที ([run 32013546146](https://github.com/kongboxx/pos/actions/runs/32013546146))
 
 Expected: เขียว · ถ้าแดงให้แก้จนเขียวก่อนไป Task 4 — สเปก D9 เขียนไว้ตรง ๆ ว่า CI ที่แดงสุ่มคือ CI ที่คนเลิกอ่าน
 และ CI ที่แดงตั้งแต่วันแรกก็คนละอาการเดียวกัน
@@ -669,7 +678,7 @@ Expected: เขียว · ถ้าแดงให้แก้จนเขี
 **หมายเหตุก่อนเริ่ม:** ตั้งแต่ task นี้ไปคำสั่งรันบน VPS ผ่าน ssh ไม่ใช่บนเครื่องตัวเอง
 · ทุกขั้นที่ขึ้นต้นด้วย `sudo` รันในฐานะผู้ใช้ปกติที่มีสิทธิ์ sudo ไม่ใช่ root
 
-- [ ] **Step 1: อัปเดตเครื่องแล้วลงของพื้นฐาน**
+- [x] **Step 1: อัปเดตเครื่องแล้วลงของพื้นฐาน**
 
 ```bash
 sudo apt update && sudo apt upgrade -y
