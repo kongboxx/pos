@@ -1,0 +1,76 @@
+# Runs the same four commands a human runs before committing, on a machine
+# that has never seen this repo before.
+#
+# `pnpm build` comes BEFORE `pnpm test` on purpose: bundle-boundary.test.ts
+# reads dist/ and calls describe.skip when it is missing, so without a build
+# those four tests report green by not running. The one check that exists to
+# stop a payroll screen reaching a tablet must not be the one that opts out.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# A second push to the same branch makes the first run pointless. Cancel it
+# rather than queue behind it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        # Same major version as docker-compose.yml and as the VPS, and UTC for
+        # the same reason the compose file says so: businessDate maths is done
+        # in the app against a database that stores UTC.
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pos
+          POSTGRES_PASSWORD: pos_dev_password
+          POSTGRES_DB: pos_dev
+          TZ: UTC
+          PGTZ: UTC
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pos -d pos_dev"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://pos:pos_dev_password@localhost:5432/pos_dev?schema=public
+      # Throwaway values that only have to satisfy the length checks in env.ts.
+      # Nothing here signs anything that outlives the job.
+      JWT_SECRET: ci-only-jwt-secret-not-used-anywhere
+      PRINT_AGENT_TOKEN: ci-only-print-agent-token-value
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads "packageManager": "pnpm@11.18.0" from package.json, so the
+      # version is pinned in one place rather than two.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # postinstall runs `prisma generate`, so the client exists after this.
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck
+      - run: npx eslint .
+      - run: npx prettier --check .
+
+      - run: pnpm build
+
+      - run: pnpm --filter @pos/api db:deploy
+      - run: pnpm --filter @pos/api db:seed:demo
+
+      - run: pnpm test

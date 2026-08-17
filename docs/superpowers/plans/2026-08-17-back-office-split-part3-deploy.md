@@ -540,7 +540,7 @@ git commit -m "feat: build both sites to talk to their own /api"
 · และ **ต้อง `pnpm build` ก่อน `pnpm test`** ไม่งั้นเทสต์ 4 ตัวใน `bundle-boundary.test.ts`
 จะข้ามตัวเองอย่างเงียบ ๆ แล้ว CI จะเขียวโดยไม่ได้ตรวจสิ่งที่มันถูกสร้างมาตรวจ
 
-- [ ] **Step 1: เขียน workflow**
+- [x] **Step 1: เขียน workflow**
 
 สร้าง `.github/workflows/ci.yml`:
 
@@ -623,7 +623,7 @@ jobs:
       - run: pnpm test
 ```
 
-- [ ] **Step 2: ตรวจว่า YAML อ่านได้ก่อน push**
+- [x] **Step 2: ตรวจว่า YAML อ่านได้ก่อน push**
 
 ```bash
 node -e "const{readFileSync}=require('fs');const s=readFileSync('.github/workflows/ci.yml','utf8');if(!s.includes('pnpm build')||s.indexOf('pnpm build')>s.indexOf('run: pnpm test'))throw new Error('build must come before test');console.log('order ok, '+s.split('\n').length+' lines')"
@@ -631,7 +631,7 @@ node -e "const{readFileSync}=require('fs');const s=readFileSync('.github/workflo
 
 Expected: `order ok, ...`
 
-- [ ] **Step 3: commit แล้ว push ให้มันรันจริง**
+- [x] **Step 3: commit แล้ว push ให้มันรันจริง**
 
 ```bash
 git add .github/workflows/ci.yml
