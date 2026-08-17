@@ -58,6 +58,13 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
     // request id make the sync logs in Step 4 readable.
     genReqId: () => crypto.randomUUID(),
     bodyLimit: 2 * 1024 * 1024,
+    /**
+     * ONE hop, or none. See TRUST_PROXY in env.ts for why `true` would be
+     * worse than nothing: it makes request.ip the caller's own first
+     * X-Forwarded-For entry, and a limiter keyed on a value the attacker
+     * writes is not a limiter.
+     */
+    trustProxy: env.TRUST_PROXY ? 1 : false,
   });
 
   // Two PWAs on two different origins in dev, both holding their session in an

@@ -76,6 +76,31 @@ const envSchema = z.object({
         .map((entry) => entry.trim())
         .filter((entry) => entry !== ''),
     ),
+
+  /**
+   * Whether an X-Forwarded-For header may be believed. ONE hop, never all.
+   *
+   * `request.ip` keys the per-IP login limiter and feeds the ipHash on every
+   * Session row. Behind a reverse proxy and without this, every request in the
+   * world arrives from 127.0.0.1: the limiter becomes one shared bucket that a
+   * single bot empties, locking the owner out of their own shop, and the ipHash
+   * column answers "which machine was this" with "the proxy" forever.
+   *
+   * Trusting ALL hops would be the other failure. proxy-addr would then take
+   * the LEFTMOST entry of X-Forwarded-For, which is written by the caller — a
+   * new value in that header buys a fresh quota. One hop takes the entry the
+   * proxy itself appended, which is the real peer. Caddy is also configured to
+   * overwrite rather than append (deploy/Caddyfile), so the two agree.
+   *
+   * An enum, not z.coerce.boolean(): coercion reads the string "false" as true,
+   * because every non-empty string is truthy, and the mistake is silent.
+   */
+  TRUST_PROXY: z
+    .enum(['true', 'false'], {
+      errorMap: () => ({ message: 'TRUST_PROXY must be exactly "true" or "false"' }),
+    })
+    .default('false')
+    .transform((value) => value === 'true'),
 });
 
 export type Env = z.infer<typeof envSchema>;

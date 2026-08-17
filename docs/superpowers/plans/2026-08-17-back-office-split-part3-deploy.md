@@ -158,7 +158,7 @@ Ubuntu 24.04 มี PostgreSQL 16 ใน repo ของตัวเอง เท
 - Produces: `Env.TRUST_PROXY: boolean` — Task 6 เขียน `TRUST_PROXY=true` ลง `/etc/pos/api.env`
   และ Task 7 ตั้ง Caddy ให้เขียนทับ `X-Forwarded-For` ให้ตรงกับสมมติฐาน "1 hop" ของ task นี้
 
-- [ ] **Step 1: เขียนเทสต์ของ `loadEnv` ที่ยังไม่ผ่าน**
+- [x] **Step 1: เขียนเทสต์ของ `loadEnv` ที่ยังไม่ผ่าน**
 
 ต่อท้าย `describe('loadEnv', ...)` ใน `apps/api/src/env.test.ts` ก่อนวงเล็บปิด:
 
@@ -179,7 +179,7 @@ it('rejects anything other than true or false, instead of quietly meaning true',
 });
 ```
 
-- [ ] **Step 2: รันเทสต์ให้เห็นว่ามันแดง**
+- [x] **Step 2: รันเทสต์ให้เห็นว่ามันแดง**
 
 ```bash
 pnpm --filter @pos/api test -- src/env.test.ts
@@ -187,7 +187,7 @@ pnpm --filter @pos/api test -- src/env.test.ts
 
 Expected: FAIL 3 ตัว — สองตัวแรกได้ `undefined` ไม่ใช่ `false`/`true` และตัวที่สามไม่ throw
 
-- [ ] **Step 3: เพิ่ม `TRUST_PROXY` ลงใน schema**
+- [x] **Step 3: เพิ่ม `TRUST_PROXY` ลงใน schema**
 
 ใน `apps/api/src/env.ts` ต่อท้าย block ของ `TILL_HOSTS` (ก่อน `});` ที่ปิด `envSchema`):
 
@@ -218,7 +218,7 @@ Expected: FAIL 3 ตัว — สองตัวแรกได้ `undefined` 
     .transform((value) => value === 'true'),
 ```
 
-- [ ] **Step 4: รันเทสต์ให้ผ่าน**
+- [x] **Step 4: รันเทสต์ให้ผ่าน**
 
 ```bash
 pnpm --filter @pos/api test -- src/env.test.ts
@@ -226,7 +226,7 @@ pnpm --filter @pos/api test -- src/env.test.ts
 
 Expected: PASS ทั้งไฟล์
 
-- [ ] **Step 5: เขียนเทสต์พฤติกรรมที่ยังไม่ผ่าน**
+- [x] **Step 5: เขียนเทสต์พฤติกรรมที่ยังไม่ผ่าน**
 
 สร้าง `apps/api/src/modules/auth/trust-proxy.test.ts`:
 
@@ -327,17 +327,22 @@ describe('with TRUST_PROXY off', () => {
 });
 ```
 
-- [ ] **Step 6: รันเทสต์ให้เห็นว่ามันแดง**
+- [x] **Step 6: รันเทสต์ให้เห็นว่ามันแดง**
 
 ```bash
 pnpm --filter @pos/api test -- src/modules/auth/trust-proxy.test.ts
 ```
 
-Expected: FAIL — เทสต์ทั้งสองใน `with TRUST_PROXY on` ล้ม เพราะตอนนี้ทุกคำขอถูกนับเป็น `127.0.0.1`
-ตัวแรกจะได้ 429 ตรงคำขอของ "ลูกค้าคนที่สอง" · เทสต์ใน `with TRUST_PROXY off` ผ่านอยู่แล้ว
-ซึ่งถูกต้อง มันคือการยืนยันว่าพฤติกรรมเดิมไม่เปลี่ยน
+Expected: FAIL 1 ตัว จาก 3 (วัดแล้ว) — `gives two different clients two different budgets` ได้ 429
+ตรงคำขอของ "ลูกค้าคนที่สอง" เพราะตอนนี้ทุกคำขอถูกนับเป็น `127.0.0.1`
 
-- [ ] **Step 7: ส่ง `trustProxy` เข้า Fastify**
+อีกสองตัวผ่านอยู่แล้ว และผ่านคนละเหตุผลกัน · ตัวใน `with TRUST_PROXY off` ผ่านเพราะมันยืนยันว่า
+พฤติกรรมเดิมไม่เปลี่ยน ซึ่งถูกต้อง · แต่ `ignores a forged first entry` ผ่านแบบว่างเปล่า — ตอนนี้ทุกคำขอ
+เป็น IP เดียวกันอยู่แล้ว คำขอที่ 11 จึงโดน 429 ไม่ว่าหัวข้อความจะเขียนอะไร · มันไม่ได้แยกโค้ดวันนี้ออกจาก
+โค้ดที่ถูก แต่มันแยก `trustProxy: 1` ออกจาก `trustProxy: true` ซึ่งเป็นทางแก้ที่ผิดอีกทางหนึ่ง
+นั่นคือสิ่งที่เทสต์ตัวนี้มีไว้เฝ้า
+
+- [x] **Step 7: ส่ง `trustProxy` เข้า Fastify**
 
 ใน `apps/api/src/app.ts` ในตัวเลือกของ `Fastify({...})` เพิ่มต่อจาก `bodyLimit`:
 
@@ -352,7 +357,7 @@ Expected: FAIL — เทสต์ทั้งสองใน `with TRUST_PROXY 
     trustProxy: env.TRUST_PROXY ? 1 : false,
 ```
 
-- [ ] **Step 8: รันเทสต์ให้ผ่าน**
+- [x] **Step 8: รันเทสต์ให้ผ่าน**
 
 ```bash
 pnpm --filter @pos/api test -- src/modules/auth/trust-proxy.test.ts
@@ -360,7 +365,7 @@ pnpm --filter @pos/api test -- src/modules/auth/trust-proxy.test.ts
 
 Expected: PASS 3 ตัว
 
-- [ ] **Step 9: บันทึกลง `.env.example`**
+- [x] **Step 9: บันทึกลง `.env.example`**
 
 ใน `apps/api/.env.example` ต่อท้ายบล็อกของ `TILL_HOSTS` (ก่อนเส้นคั่น `# ---`):
 
@@ -372,7 +377,7 @@ Expected: PASS 3 ตัว
 TRUST_PROXY=false
 ```
 
-- [ ] **Step 10: กวาดทั้ง workspace**
+- [x] **Step 10: กวาดทั้ง workspace**
 
 ```bash
 pnpm test && pnpm typecheck && npx eslint . && npx prettier --check .
@@ -380,7 +385,7 @@ pnpm test && pnpm typecheck && npx eslint . && npx prettier --check .
 
 Expected: เขียวทั้งหมด · `@pos/api` **คาดหวัง: 413 ผ่าน** (407 + 6) · รวม **1,224**
 
-- [ ] **Step 11: commit**
+- [x] **Step 11: commit**
 
 ```bash
 git add apps/api/src/env.ts apps/api/src/env.test.ts apps/api/src/app.ts apps/api/src/modules/auth/trust-proxy.test.ts apps/api/.env.example

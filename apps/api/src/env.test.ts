@@ -73,4 +73,19 @@ describe('loadEnv', () => {
     expect(() => loadEnv(withoutToken)).toThrow(/PRINT_AGENT_TOKEN/);
     expect(() => loadEnv({ ...VALID, PRINT_AGENT_TOKEN: '1234' })).toThrow(/PRINT_AGENT_TOKEN/);
   });
+
+  it('does not trust proxy headers unless told to', () => {
+    expect(loadEnv(VALID).TRUST_PROXY).toBe(false);
+  });
+
+  it('trusts one hop when TRUST_PROXY is the string "true"', () => {
+    expect(loadEnv({ ...VALID, TRUST_PROXY: 'true' }).TRUST_PROXY).toBe(true);
+  });
+
+  it('rejects anything other than true or false, instead of quietly meaning true', () => {
+    // z.coerce.boolean() would read "false" as true, because every non-empty
+    // string is truthy. Getting this backwards turns the per-IP login limiter
+    // into a single shared bucket for the whole internet, and nothing says so.
+    expect(() => loadEnv({ ...VALID, TRUST_PROXY: 'yes' })).toThrow(/TRUST_PROXY/);
+  });
 });
