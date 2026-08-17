@@ -1,0 +1,22 @@
+# Line endings.
+#
+# The repository stores LF and the working tree gets LF too, on every machine.
+#
+# Without this, git on Windows (core.autocrlf=true) writes CRLF into the
+# working tree while storing LF, and prettier — whose endOfLine default is
+# "lf" — then reports every file in the project as badly formatted. Nothing is
+# actually wrong at that point, which is what makes it expensive: `pnpm
+# format:check` fails on 81 files that no one touched, and the real fix looks
+# like `prettier --write .` rewriting the entire repo.
+#
+# eol=lf rather than leaving it to autocrlf, because there is nothing here that
+# needs CRLF. The one thing that would is a .bat file, and this project has none.
+* text=auto eol=lf
+
+# Binary — never touched, never diffed as text.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
