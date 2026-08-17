@@ -2243,7 +2243,7 @@ reviewing on its own before an endpoint is pointed at it."
 - Consumes: `OfficeAuthService` จาก Task 6 · `issueSessionCookie` จาก Task 4
 - Produces: `POST /auth/office/login` รับ `{ email, password }` ตอบ `{ user, permissions }` และเซ็ตคุกกี้ `office_session` — Task 12 เรียกตัวนี้
 
-- [ ] **Step 1: เขียนเทสต์ที่ยังไม่ผ่าน**
+- [x] **Step 1: เขียนเทสต์ที่ยังไม่ผ่าน**
 
 สร้าง `apps/api/src/modules/auth/office-auth.routes.test.ts`:
 
@@ -2412,7 +2412,7 @@ describe('being refused', () => {
 });
 ```
 
-- [ ] **Step 2: รันแล้วดูให้แน่ใจว่าแดง**
+- [x] **Step 2: รันแล้วดูให้แน่ใจว่าแดง**
 
 ```bash
 pnpm build:shared && pnpm --filter @pos/api test -- src/modules/auth/office-auth.routes.test.ts
@@ -2420,7 +2420,7 @@ pnpm build:shared && pnpm --filter @pos/api test -- src/modules/auth/office-auth
 
 คาดหวัง: FAIL — 404 `ไม่พบเส้นทาง POST /api/auth/office/login`
 
-- [ ] **Step 3: เพิ่ม endpoint**
+- [x] **Step 3: เพิ่ม endpoint**
 
 ใน `apps/api/src/modules/auth/auth.routes.ts` — เพิ่ม import:
 
@@ -2536,7 +2536,7 @@ async function writeLoginAudit(
 }
 ```
 
-- [ ] **Step 4: รันเทสต์**
+- [x] **Step 4: รันเทสต์**
 
 ```bash
 pnpm --filter @pos/api test -- src/modules/auth/office-auth.routes.test.ts
@@ -2544,7 +2544,7 @@ pnpm --filter @pos/api test -- src/modules/auth/office-auth.routes.test.ts
 
 คาดหวัง: PASS 10 ตัว
 
-- [ ] **Step 5: เทสต์ทั้ง workspace แล้ว commit**
+- [x] **Step 5: เทสต์ทั้ง workspace แล้ว commit**
 
 ```bash
 pnpm test

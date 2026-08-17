@@ -11,7 +11,9 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import {
   loginRequestSchema,
+  officeLoginRequestSchema,
   OFFICE_SESSION_COOKIE_NAME,
+  OFFICE_SESSION_TTL_SECONDS,
   ROLE_PERMISSIONS,
   SESSION_COOKIE_NAME,
   SESSION_TTL_SECONDS,
@@ -32,6 +34,7 @@ import type { Env } from '../../env.js';
 import { formatDateColumn } from '../orders/order.mapper.js';
 import { requireAuth } from './guards.js';
 import { AuthService } from './auth.service.js';
+import { OfficeAuthService } from './office-auth.service.js';
 
 const staffListQuerySchema = z.object({ branchId: uuidSchema.optional() });
 
@@ -94,6 +97,7 @@ async function issueSessionCookie(
 
 export function registerAuthRoutes(app: FastifyInstance, options: { env: Env }): void {
   const service = new AuthService(prisma);
+  const officeService = new OfficeAuthService(prisma);
   const isProduction = options.env.NODE_ENV === 'production';
 
   /**
@@ -154,6 +158,78 @@ export function registerAuthRoutes(app: FastifyInstance, options: { env: Env }):
       userAgent: request.headers['user-agent'],
       ip: request.ip,
     });
+
+    return reply.send({ user: result.user, permissions: ROLE_PERMISSIONS[result.user.role] });
+  });
+
+  /**
+   * The back office door.
+   *
+   * A separate endpoint from the till's, not one endpoint that works out which
+   * kind of credential it was handed. Two reasons, and both matter: `surface`
+   * comes from the path that was called rather than from a header the caller
+   * chose, and the two doors can be rate-limited on different terms without
+   * one policy having to serve a tablet in a shop and a laptop on the internet.
+   */
+  app.post('/auth/office/login', async (request, reply) => {
+    const body = officeLoginRequestSchema.parse(request.body ?? {});
+    const result = await officeService.login(body.email, body.password);
+
+    if (!result.ok) {
+      if (result.reason === 'LOCKED') {
+        const seconds = Math.max(1, Math.ceil((result.lockedUntil.getTime() - Date.now()) / 1000));
+        await writeLoginAudit(
+          result.branchId,
+          result.staffId,
+          'OFFICE_LOGIN_FAILED',
+          'บัญชีถูกล็อก',
+        );
+        return reply.status(429).send({
+          error: 'LOGIN_LOCKED',
+          message: `ใส่รหัสผ่านผิดหลายครั้ง บัญชีถูกล็อก กรุณารออีก ${Math.ceil(seconds / 60)} นาที`,
+          lockedUntil: result.lockedUntil.toISOString(),
+        });
+      }
+
+      /**
+       * A failure against an address we DO know gets an audit row; one against
+       * an address we do not cannot have one, because AuditLog is keyed by
+       * branch and there is no branch to key it to. That asymmetry is a fact
+       * about the schema, not an oversight — the unknown-address case goes to
+       * the request log instead, where it is still visible without inventing a
+       * branch to file it under.
+       */
+      const known = await prisma.staff.findUnique({
+        where: { email: body.email },
+        select: { id: true, branchId: true },
+      });
+      if (known) {
+        await writeLoginAudit(
+          known.branchId,
+          known.id,
+          'OFFICE_LOGIN_FAILED',
+          'รหัสผ่านไม่ถูกต้อง',
+        );
+      } else {
+        request.log.info({ email: body.email }, 'office login for an unknown address');
+      }
+
+      return reply.status(401).send({
+        error: 'BAD_CREDENTIALS',
+        message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง',
+      });
+    }
+
+    await issueSessionCookie(app, reply, {
+      user: result.user,
+      surface: 'OFFICE',
+      ttlSeconds: OFFICE_SESSION_TTL_SECONDS,
+      isProduction,
+      userAgent: request.headers['user-agent'],
+      ip: request.ip,
+    });
+
+    await writeLoginAudit(result.user.branchId, result.user.staffId, 'OFFICE_LOGIN', null);
 
     return reply.send({ user: result.user, permissions: ROLE_PERMISSIONS[result.user.role] });
   });
@@ -232,5 +308,32 @@ export function registerAuthRoutes(app: FastifyInstance, options: { env: Env }):
       },
     };
     return reply.send(body);
+  });
+}
+
+/**
+ * One audit row per office login attempt, successful or not.
+ *
+ * `entityId` is the staff id rather than a session id: the question this gets
+ * asked for is "who has been trying to get into my reports", and that has to
+ * be answerable for the attempts that never produced a session.
+ *
+ * Never carries the password, and never carries the token.
+ */
+async function writeLoginAudit(
+  branchId: string,
+  staffId: string,
+  action: 'OFFICE_LOGIN' | 'OFFICE_LOGIN_FAILED',
+  reason: string | null,
+): Promise<void> {
+  await prisma.auditLog.create({
+    data: {
+      branchId,
+      staffId,
+      action,
+      entityType: 'SESSION',
+      entityId: staffId,
+      reason,
+    },
   });
 }
