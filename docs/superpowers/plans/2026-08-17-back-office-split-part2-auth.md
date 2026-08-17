@@ -152,7 +152,7 @@
 
 > **ทำไมเป็น task แรก:** ตอนนี้ `apps/office` ยิง API ไม่ได้เลย เบราว์เซอร์บล็อกที่ preflight เพราะ CORS อนุญาตแค่ `:5173` · ทุก task หลังจากนี้ต้องเปิดหน้าเว็บทดสอบด้วยมือ ถ้าไม่แก้ก่อนจะทดสอบไม่ได้สักอัน
 
-- [ ] **Step 1: เขียนเทสต์ที่ยังไม่ผ่าน**
+- [x] **Step 1: เขียนเทสต์ที่ยังไม่ผ่าน**
 
 แก้ `apps/api/src/env.test.ts` — บรรทัดที่ 16 เดิมคือ `expect(env.WEB_ORIGIN).toBe('http://localhost:5173');` เปลี่ยนเป็น และเพิ่มเทสต์ใหม่ต่อท้าย describe เดิม:
 
@@ -187,7 +187,7 @@ it('rejects an empty WEB_ORIGIN rather than allowing nothing at all', () => {
 });
 ```
 
-- [ ] **Step 2: รันแล้วดูให้แน่ใจว่าแดง**
+- [x] **Step 2: รันแล้วดูให้แน่ใจว่าแดง**
 
 ```bash
 pnpm --filter @pos/api test -- src/env.test.ts
@@ -195,7 +195,7 @@ pnpm --filter @pos/api test -- src/env.test.ts
 
 คาดหวัง: FAIL — `expected 'http://localhost:5173' to deeply equal [ 'http://localhost:5173', ... ]`
 
-- [ ] **Step 3: แก้ `env.ts`**
+- [x] **Step 3: แก้ `env.ts`**
 
 แทนที่ `apps/api/src/env.ts` บรรทัด 19–32 ทั้งบล็อก:
 
@@ -248,7 +248,7 @@ function isHttpOrigin(value: string): boolean {
 }
 ```
 
-- [ ] **Step 4: แก้ `app.ts`**
+- [x] **Step 4: แก้ `app.ts`**
 
 `apps/api/src/app.ts` บรรทัด 54–59 — คอมเมนต์เดิมพูดถึง "PWA" เอกพจน์ ซึ่งไม่จริงอีกแล้ว:
 
@@ -262,7 +262,7 @@ await app.register(cors, {
 });
 ```
 
-- [ ] **Step 5: แก้ `.env.example`**
+- [x] **Step 5: แก้ `.env.example`**
 
 `apps/api/.env.example` บรรทัด 16–17:
 
@@ -274,7 +274,7 @@ await app.register(cors, {
 WEB_ORIGIN="http://localhost:5173,http://localhost:5174"
 ```
 
-- [ ] **Step 6: รันเทสต์**
+- [x] **Step 6: รันเทสต์**
 
 ```bash
 pnpm --filter @pos/api test -- src/env.test.ts
@@ -282,7 +282,7 @@ pnpm --filter @pos/api test -- src/env.test.ts
 
 คาดหวัง: PASS ทุกตัว
 
-- [ ] **Step 7: พิสูจน์ด้วยมือว่าหลังร้านยิง API ได้จริงแล้ว**
+- [x] **Step 7: พิสูจน์ด้วยมือว่าหลังร้านยิง API ได้จริงแล้ว**
 
 เปิดสามเทอร์มินัล: `pnpm dev:api` · `pnpm dev:web` · `pnpm dev:office` แล้วเปิด `http://localhost:5174` ดู DevTools → Network
 
@@ -290,7 +290,18 @@ pnpm --filter @pos/api test -- src/env.test.ts
 
 บันทึกสิ่งที่เห็นลงในแผนใต้ task นี้ ถ้าไม่ตรงให้หยุดแล้วรายงาน
 
-- [ ] **Step 8: เทสต์ทั้ง workspace แล้ว commit**
+> **ผลจริง 2026-08-17** — เปิด `http://localhost:5174` แล้วดู Network:
+>
+> ```
+> GET http://localhost:3001/api/auth/me    → 401 Unauthorized
+> GET http://localhost:3001/api/auth/staff → 200 OK
+> ```
+>
+> ตรงตามที่คาด · console ไม่มี `blocked by CORS policy` เหลืออยู่ · `/auth/staff` ที่ตอบ 200 ให้คนที่ยังไม่ล็อกอินคือช่องที่ Task 8 ปิด
+>
+> **เพิ่มจากแผน:** `apps/api/.env` ในเครื่อง (gitignored แผนจึงมองไม่เห็น) ยังตั้ง `WEB_ORIGIN` เป็นค่าเดียว ต้องแก้ด้วย ไม่งั้น dev server ยังบล็อกอยู่แม้โค้ดถูกแล้ว
+
+- [x] **Step 8: เทสต์ทั้ง workspace แล้ว commit**
 
 ```bash
 pnpm test

@@ -8,6 +8,15 @@
 
 import { z } from 'zod';
 
+function isHttpOrigin(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required (see apps/api/.env.example)'),
@@ -16,20 +25,39 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
   /// Shared secret the Raspberry Pi presents to claim print jobs.
   PRINT_AGENT_TOKEN: z.string().min(16, 'PRINT_AGENT_TOKEN must be at least 16 characters'),
-  // zod's .url() only checks that `new URL()` parses, and it happily accepts
-  // "localhost:5173" (protocol "localhost:"). CORS needs a real http origin,
-  // so the protocol is checked explicitly.
+  /**
+   * Every origin allowed to send credentialed requests, comma-separated.
+   *
+   * TWO now, not one. The till runs on :5173 and the back office on :5174, and
+   * both talk to this API cross-origin in dev with no vite proxy in between. A
+   * single value here is precisely why the office could not reach the API at
+   * all after plan 1 split it out — the browser refused the preflight and the
+   * app never got as far as a login.
+   *
+   * In production both sites sit behind the reverse proxy and are same-origin
+   * with the API, so no browser sends an Origin that needs allowing and this
+   * can be left at its default.
+   *
+   * zod's .url() is not enough: it only checks that `new URL()` parses, and it
+   * happily accepts "localhost:5173" (protocol "localhost:"). The protocol is
+   * checked explicitly, on every entry — a typo in the SECOND origin is the
+   * dangerous one, because CORS keeps working for the till and fails only for
+   * the office, which reads like an office bug for as long as it takes to find.
+   */
   WEB_ORIGIN: z
     .string()
-    .refine((value) => {
-      try {
-        const url = new URL(value);
-        return url.protocol === 'http:' || url.protocol === 'https:';
-      } catch {
-        return false;
-      }
-    }, 'WEB_ORIGIN must be a full http(s) origin, e.g. http://localhost:5173')
-    .default('http://localhost:5173'),
+    .default('http://localhost:5173,http://localhost:5174')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry !== ''),
+    )
+    .refine((list) => list.length > 0, 'WEB_ORIGIN must list at least one origin')
+    .refine(
+      (list) => list.every(isHttpOrigin),
+      'WEB_ORIGIN must be full http(s) origins separated by commas, e.g. http://localhost:5173,http://localhost:5174',
+    ),
 });
 
 export type Env = z.infer<typeof envSchema>;

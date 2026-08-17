@@ -51,10 +51,11 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
     bodyLimit: 2 * 1024 * 1024,
   });
 
-  // The PWA is served from a different origin in dev and holds the session in
-  // an httpOnly cookie, so credentials must be allowed explicitly.
+  // Two PWAs on two different origins in dev, both holding their session in an
+  // httpOnly cookie, so credentials must be allowed explicitly. `env.WEB_ORIGIN`
+  // is a list — see env.ts for why one value was not enough.
   await app.register(cors, {
-    origin: [env.WEB_ORIGIN],
+    origin: [...env.WEB_ORIGIN],
     credentials: true,
   });
 
