@@ -409,7 +409,7 @@ git commit -m "feat: let the API see the real client IP behind one proxy"
   Caddy ให้ `handle /api/*` ทำ reverse proxy ส่วนที่เหลือเสิร์ฟไฟล์ · และ `liveSocketUrl()`
   (`apps/web/src/api-client.ts:73`) แปลง `/api` เป็น `wss://shop.<domain>/api/live` ให้เองโดยไม่ต้องแก้อะไร
 
-- [ ] **Step 1: เปิดทางให้ `.env.production` เข้า git ได้**
+- [x] **Step 1: เปิดทางให้ `.env.production` เข้า git ได้**
 
 ใน `.gitignore` แก้บล็อก `# env` ทั้งบล็อกเป็น:
 
@@ -425,7 +425,7 @@ git commit -m "feat: let the API see the real client IP behind one proxy"
 !.env.production
 ```
 
-- [ ] **Step 2: เขียนไฟล์ทั้งสอง**
+- [x] **Step 2: เขียนไฟล์ทั้งสอง**
 
 `apps/web/.env.production`:
 
@@ -455,7 +455,7 @@ VITE_API_URL="/api"
 VITE_API_URL="/api"
 ```
 
-- [ ] **Step 3: เขียนเทสต์ที่ยังไม่ผ่าน**
+- [x] **Step 3: เขียนเทสต์ที่ยังไม่ผ่าน**
 
 ต่อท้าย `apps/web/src/bundle-boundary.test.ts`:
 
@@ -486,7 +486,7 @@ suite('what the built sites dial', () => {
 });
 ```
 
-- [ ] **Step 4: build แล้วรันเทสต์**
+- [x] **Step 4: build แล้วรันเทสต์**
 
 ```bash
 pnpm build && pnpm --filter @pos/web test -- src/bundle-boundary.test.ts
@@ -495,7 +495,7 @@ pnpm build && pnpm --filter @pos/web test -- src/bundle-boundary.test.ts
 Expected: PASS ทั้งไฟล์ · ถ้า `dist/` ยังไม่มี ทั้ง suite จะข้ามตัวเองแล้วรายงานเป็น skipped
 ซึ่งแปลว่า `pnpm build` ล้ม ให้ย้อนไปดูก่อน
 
-- [ ] **Step 5: พิสูจน์ว่าเทสต์กัดจริง**
+- [x] **Step 5: พิสูจน์ว่าเทสต์กัดจริง**
 
 ```bash
 mv apps/web/.env.production apps/web/.env.production.off && pnpm --filter @pos/web build && pnpm --filter @pos/web test -- src/bundle-boundary.test.ts
@@ -507,7 +507,7 @@ Expected: FAIL ที่ `the till carries no localhost API address` · จา�
 mv apps/web/.env.production.off apps/web/.env.production && pnpm build
 ```
 
-- [ ] **Step 6: กวาดทั้ง workspace**
+- [x] **Step 6: กวาดทั้ง workspace**
 
 ```bash
 pnpm test && pnpm typecheck && npx eslint . && npx prettier --check .
@@ -515,7 +515,7 @@ pnpm test && pnpm typecheck && npx eslint . && npx prettier --check .
 
 Expected: เขียวทั้งหมด · `@pos/web` **คาดหวัง: 251 ผ่าน** (249 + 2 เมื่อ build แล้ว) · รวม **1,226**
 
-- [ ] **Step 7: commit**
+- [x] **Step 7: commit**
 
 ```bash
 git add .gitignore apps/web/.env.production apps/office/.env.production apps/web/src/bundle-boundary.test.ts

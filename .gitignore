@@ -9,6 +9,11 @@ coverage/
 .env
 .env.*
 !.env.example
+# ...except the production ones, which are checked in on purpose. Everything a
+# VITE_ variable holds is compiled into JavaScript that every visitor
+# downloads, so it cannot be a secret even if someone tries. The API's real
+# secrets live in /etc/pos/api.env on the server and are never in this repo.
+!.env.production
 
 # vite / pwa generated
 dev-dist/

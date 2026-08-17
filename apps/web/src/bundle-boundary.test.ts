@@ -171,3 +171,28 @@ suite('the office bundle', () => {
     expect(tillOnly.filter((label) => js.includes(label))).toEqual([]);
   });
 });
+
+/**
+ * Where the two built sites think the API is.
+ *
+ * The source has a fallback of http://localhost:3001/api, which is right for a
+ * fresh clone with no .env and catastrophic on a server: the browser would
+ * dial port 3001 on the machine of whoever opened the page. It fails with a
+ * network error rather than a wrong answer, so it is survivable — but it is
+ * invisible until someone opens the site, which on a shop's first morning is
+ * the worst possible moment to find out.
+ *
+ * esbuild folds `"/api" ?? "http://localhost:3001/api"` away when minifying,
+ * so the absence of that string in the output is a real signal that
+ * .env.production was read. Verified by building both ways before this test
+ * was written.
+ */
+suite('what the built sites dial', () => {
+  it('the till carries no localhost API address', () => {
+    expect(shippedJs(TILL_DIST)).not.toContain('localhost:3001');
+  });
+
+  it('the office carries no localhost API address', () => {
+    expect(shippedJs(OFFICE_DIST)).not.toContain('localhost:3001');
+  });
+});
