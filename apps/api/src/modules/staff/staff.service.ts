@@ -221,6 +221,11 @@ export function toStaffDto(row: Staff, hasHistory: boolean, now = new Date()): S
     position: row.position,
     role: row.role,
     phone: row.phone,
+    email: row.email,
+    // The boolean, never the hash. A screen only needs to know whether the
+    // door exists, and a hash on the wire is a hash in someone's devtools.
+    hasOfficeAccess: row.passwordHash !== null,
+    isLoginLocked: !!row.loginLockedUntil && row.loginLockedUntil > now,
 
     startDate: formatDateColumn(row.startDate),
     endDate: row.endDate ? formatDateColumn(row.endDate) : null,
@@ -248,6 +253,7 @@ export function staffAuditShape(row: Staff): Prisma.InputJsonValue {
     fullName: row.fullName,
     nickname: row.nickname,
     role: row.role,
+    email: row.email,
     status: row.status,
     wageType: row.wageType,
     wageRateSatang: row.wageRateSatang,

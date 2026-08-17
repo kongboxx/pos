@@ -18,6 +18,7 @@ import {
   monthRange,
   Permission,
   staffCreateRequestSchema,
+  staffPasswordRequestSchema,
   staffPinRequestSchema,
   staffRequestSchema,
   yearMonthOf,
@@ -32,6 +33,7 @@ import { requireSessionBranch } from '../../branch.js';
 import { prisma } from '../../db.js';
 import { conflict, notFound } from '../../http-error.js';
 import { requirePermission } from '../auth/guards.js';
+import { hashPassword } from '../auth/office-auth.service.js';
 import { branchBusinessDate, formatDateColumn, toDateColumn } from '../orders/order.mapper.js';
 import {
   assertOwnerRemains,
@@ -85,9 +87,15 @@ export function registerStaffRoutes(app: FastifyInstance): void {
 
     await assertPinUnused(prisma, branch.id, body.pin);
 
-    const created = await prisma.staff.create({
-      data: { branchId: branch.id, pinHash: await hashPin(body.pin), ...toStaffColumns(body) },
-    });
+    let created;
+    try {
+      created = await prisma.staff.create({
+        data: { branchId: branch.id, pinHash: await hashPin(body.pin), ...toStaffColumns(body) },
+      });
+    } catch (error) {
+      if (isDuplicateEmail(error)) throw conflict('EMAIL_TAKEN', 'อีเมลนี้มีคนใช้แล้ว');
+      throw error;
+    }
 
     await audit(branch.id, request.user.staffId, 'CREATE_STAFF', created.id, {
       after: staffAuditShape(created),
@@ -104,7 +112,13 @@ export function registerStaffRoutes(app: FastifyInstance): void {
 
     await assertOwnerRemains(prisma, branch.id, id, { role: body.role, status: body.status });
 
-    const updated = await prisma.staff.update({ where: { id }, data: toStaffColumns(body) });
+    let updated;
+    try {
+      updated = await prisma.staff.update({ where: { id }, data: toStaffColumns(body) });
+    } catch (error) {
+      if (isDuplicateEmail(error)) throw conflict('EMAIL_TAKEN', 'อีเมลนี้มีคนใช้แล้ว');
+      throw error;
+    }
 
     await audit(branch.id, request.user.staffId, 'UPDATE_STAFF', id, {
       before: staffAuditShape(existing),
@@ -142,6 +156,75 @@ export function registerStaffRoutes(app: FastifyInstance): void {
     // happened, to whom and by whom is the part worth keeping.
     await audit(branch.id, request.user.staffId, 'RESET_STAFF_PIN', id, {
       reason: `ตั้ง PIN ใหม่ให้ ${existing.fullName}`,
+    });
+
+    return reply.send(await roster(branch.id, branchBusinessDate(branch)));
+  });
+
+  /**
+   * Give someone the back office, or change their password.
+   *
+   * Its own endpoint for the same reason the PIN has one: editing a phone
+   * number and deciding who can read every wage in the shop are different
+   * acts, and only one of them should be possible by accident while tidying a
+   * form. Setting a password also clears the lockout — being handed a new one
+   * and still not being able to use it for fifteen minutes is exactly the
+   * moment somebody is standing there waiting.
+   */
+  app.post('/staff/:id/password', { preHandler: writeStaff }, async (request, reply) => {
+    const { id } = idParams.parse(request.params);
+    const { password } = staffPasswordRequestSchema.parse(request.body);
+    const branch = await requireSessionBranch(prisma, request.user.branchId);
+    const existing = await requireStaff(prisma, branch.id, id);
+
+    // A password with no username is a hash nobody can ever present a
+    // credential against — the office login screen asks for an email.
+    if (!existing.email) {
+      throw conflict(
+        'STAFF_HAS_NO_EMAIL',
+        'ต้องใส่อีเมลให้คนนี้ก่อน ถึงจะตั้งรหัสผ่านเข้าหลังร้านได้',
+      );
+    }
+
+    await prisma.staff.update({
+      where: { id },
+      data: {
+        passwordHash: await hashPassword(password),
+        failedLoginAttempts: 0,
+        loginLockedUntil: null,
+      },
+    });
+
+    // No before/after: the whole content of this change is a secret. That it
+    // happened, to whom and by whom is the part worth keeping.
+    await audit(branch.id, request.user.staffId, 'SET_STAFF_PASSWORD', id, {
+      reason: `ตั้งรหัสผ่านหลังร้านให้ ${existing.fullName}`,
+    });
+
+    return reply.send(await roster(branch.id, branchBusinessDate(branch)));
+  });
+
+  /**
+   * Take the back office away.
+   *
+   * Revokes their live sessions in the same breath. Clearing the hash alone
+   * would stop the NEXT login and leave whatever they are already holding
+   * working for hours — which is the exact failure the sessions table was
+   * added to make impossible.
+   */
+  app.delete('/staff/:id/password', { preHandler: writeStaff }, async (request, reply) => {
+    const { id } = idParams.parse(request.params);
+    const branch = await requireSessionBranch(prisma, request.user.branchId);
+    const existing = await requireStaff(prisma, branch.id, id);
+
+    await prisma.staff.update({
+      where: { id },
+      data: { passwordHash: null, failedLoginAttempts: 0, loginLockedUntil: null },
+    });
+    const revoked = await app.sessions.revokeAllFor(id);
+
+    await audit(branch.id, request.user.staffId, 'REVOKE_STAFF_PASSWORD', id, {
+      reason: `ปิดสิทธิ์เข้าหลังร้านของ ${existing.fullName} (ตัดเซสชัน ${revoked} เครื่อง)`,
     });
 
     return reply.send(await roster(branch.id, branchBusinessDate(branch)));
@@ -304,6 +387,7 @@ function toStaffColumns(
     position: body.position ?? null,
     role: body.role,
     phone: body.phone ?? null,
+    email: body.email ?? null,
     startDate: toDateColumn(body.startDate),
     endDate: body.endDate ? toDateColumn(body.endDate) : null,
     status: body.status,
@@ -316,6 +400,22 @@ function toStaffColumns(
     wageRateSatang: body.wageRateSatang,
     note: body.note ?? null,
   };
+}
+
+/**
+ * Turns a duplicate-email collision into something a screen can say.
+ *
+ * The unique index is table-wide, so the person already holding this address
+ * may be at another branch and therefore invisible to whoever is typing. A
+ * raw Prisma error would surface as a 500 and tell them nothing.
+ */
+function isDuplicateEmail(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: unknown }).code === 'P2002' &&
+    JSON.stringify((error as { meta?: unknown }).meta ?? {}).includes('email')
+  );
 }
 
 async function audit(

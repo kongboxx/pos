@@ -3338,7 +3338,6 @@ pnpm db:seed
 pnpm db:seed:demo
 ```
 
-
 > **ผลจริง 2026-08-17:** `prisma migrate reset` ถูกบล็อก — เครื่องมือบังคับให้ขอ consent จากผู้ใช้ก่อนคำสั่งที่ลบข้อมูล และ consent นั้นยังไม่ได้ขอ · ทั้งสองเส้นทางที่ step นี้ต้องพิสูจน์ยืนยันได้จากฐานข้อมูล dev ที่มีอยู่แทน เพราะ `upsertStaff` หาแถวจาก (branchId, fullName) และเจ้าของของ seed จริงชื่อ "เจ้าของร้าน" ไม่ชนกับ "สมชาย เจ้าของร้าน" ของ demo:
 >
 > - รันครั้งแรก → `created` พิมพ์กล่องครบทั้ง PIN `1692` และรหัสผ่าน `g6iQ6mZiNrVkGy4VZ89A` (ไม่มี `0 O 1 l I` — ตรวจแล้ว)
@@ -3384,7 +3383,7 @@ re-run six months later still never overwrites either."
   - `DELETE /staff/:id/password` — ถอนสิทธิ์เข้าหลังร้าน
   - Task 12 ไม่ได้ใช้ แต่หน้าพนักงานที่มีอยู่จะแสดงผลได้
 
-- [ ] **Step 1: เขียนเทสต์ที่ยังไม่ผ่าน**
+- [x] **Step 1: เขียนเทสต์ที่ยังไม่ผ่าน**
 
 เพิ่มใน `apps/api/src/modules/staff/staff.routes.test.ts`:
 
@@ -3598,7 +3597,11 @@ await prisma.staff.deleteMany({ where: { id: { in: throwaways } } });
 
 > **`staffPayload` รับ `staff` แต่ไม่ได้ใช้** โดยตั้งใจ — เรียกด้วย `staffPayload(staff)` อ่านแล้วชัดกว่าว่ากำลังแก้ใคร · ถ้า ESLint บ่นเรื่อง parameter ที่ไม่ได้ใช้ ให้เปลี่ยนเป็นไม่รับพารามิเตอร์แล้วเรียก `staffPayload()`
 
-- [ ] **Step 2: รันแล้วดูให้แน่ใจว่าแดง**
+> **ผลจริง 2026-08-17:** ไฟล์นี้ไม่มี `makeThrowawayStaff` หรือ `staffPayload` เดิม แต่มี `person()` กับ `create()` ที่ใช้ `PREFIX = 'ทดสอบพนักงาน'` และ `afterEach` ที่ลบทุกแถวขึ้นต้นด้วย prefix นั้น **ระหว่างเทสต์** · คนชั่วคราวของ task นี้ต้องรอดข้ามคำสั่ง inject หลายครั้งเพื่อล็อกอินเข้าหลังร้าน เลยตั้งชื่อไม่ให้ขึ้นต้นด้วย prefix (`ชั่วคราว ทดสอบ N`) แล้วเก็บกวาดใน `afterAll` ตามแผน · ใช้ `branchId` ตัวที่ `beforeAll` หาไว้แล้วแทนการ query ซ้ำ
+>
+> `staffPayload` เปลี่ยนชื่อเป็น `throwawayPayload()` ไม่รับพารามิเตอร์ ตามทางเลือกที่แผนเปิดไว้เอง
+
+- [x] **Step 2: รันแล้วดูให้แน่ใจว่าแดง**
 
 ```bash
 pnpm --filter @pos/api test -- src/modules/staff/staff.routes.test.ts
@@ -3606,7 +3609,7 @@ pnpm --filter @pos/api test -- src/modules/staff/staff.routes.test.ts
 
 คาดหวัง: FAIL — `hasOfficeAccess` undefined และ 404 บน `/password`
 
-- [ ] **Step 3: แก้ shared**
+- [x] **Step 3: แก้ shared**
 
 `packages/shared/src/payroll.ts` — เพิ่มใน `staffDtoSchema` ต่อจาก `phone`:
 
@@ -3640,7 +3643,7 @@ export type StaffPasswordRequest = z.infer<typeof staffPasswordRequestSchema>;
 
 > **ระวัง import วน:** ถ้า `auth.ts` import อะไรจาก `payroll.ts` อยู่แล้วจะเกิดวง · ตรวจด้วย `grep -n "payroll" packages/shared/src/auth.ts` — ถ้าเจอ ให้ย้าย `emailSchema`/`passwordSchema` ไป `schemas.ts` แทน แล้วบันทึกไว้
 
-- [ ] **Step 4: แก้ `toStaffDto`**
+- [x] **Step 4: แก้ `toStaffDto`**
 
 `apps/api/src/modules/staff/staff.service.ts` — เพิ่มใน object ที่ return ต่อจาก `phone: row.phone,`:
 
@@ -3658,7 +3661,7 @@ export type StaffPasswordRequest = z.infer<typeof staffPasswordRequestSchema>;
     email: row.email,
 ```
 
-- [ ] **Step 5: แก้ `staff.routes.ts`**
+- [x] **Step 5: แก้ `staff.routes.ts`**
 
 เพิ่ม import:
 
@@ -3777,7 +3780,11 @@ app.delete('/staff/:id/password', { preHandler: writeStaff }, async (request, re
 
 > `registerStaffRoutes(app)` ต้องเข้าถึง `app.sessions` ได้ — เข้าถึงได้อยู่แล้วเพราะ decorate ที่ root (Task 4) มองเห็นจาก plugin ลูก
 
-- [ ] **Step 6: รันเทสต์**
+> **ผลจริง 2026-08-17:** `conflict()` ในโปรเจกต์นี้รับสองอาร์กิวเมนต์ `(code, message)` ไม่ใช่ข้อความอย่างเดียวอย่างที่แผนเขียน — เพราะหน้าเว็บอ่าน `error` เป็นรหัสคงที่ ไม่ได้อ่านข้อความไทย · ใช้ `conflict('EMAIL_TAKEN', 'อีเมลนี้มีคนใช้แล้ว')` และ `conflict('STAFF_HAS_NO_EMAIL', 'ต้องใส่อีเมล…')`
+>
+> `toStaffColumns` map ทีละ field จริงตามที่แผนให้ตรวจ เลยต้องเติม `email: body.email ?? null,` เอง
+
+- [x] **Step 6: รันเทสต์**
 
 ```bash
 pnpm build:shared && pnpm --filter @pos/api test -- src/modules/staff
@@ -3785,13 +3792,17 @@ pnpm build:shared && pnpm --filter @pos/api test -- src/modules/staff
 
 คาดหวัง: PASS ทั้งหมด
 
-- [ ] **Step 7: เทสต์ทั้ง workspace แล้ว commit**
+- [x] **Step 7: เทสต์ทั้ง workspace แล้ว commit**
 
 ```bash
 pnpm test
 ```
 
 คาดหวัง: 1,209 ผ่าน
+
+> **ผลจริง 2026-08-17:** 1,208 ผ่าน — off-by-one เดิมจาก Task 6 · shared 413 · print-agent 15 · web-kit 12 · api 407 · office 112 · web 249
+>
+> `@pos/office` แดงตรง typecheck ตามที่แผนเตือนไว้เป๊ะ: `StaffListPage.test.tsx` กับ `DeductionsPage.test.tsx` สร้าง `StaffDto` ด้วยมือ · เติมสาม field ลง fixture ไม่ได้แตะ `expect` แม้แต่บรรทัดเดียว
 
 > **`@pos/office` อาจแดงตรงนี้** — `StaffDto` เพิ่มสาม field และหน้า `StaffListPage` มี fixture ที่สร้าง DTO ด้วยมือ · เติมสาม field ลง fixture ให้ครบ **ห้ามแก้ `expect`** ถ้าต้องแก้ ให้หยุดแล้วรายงาน
 

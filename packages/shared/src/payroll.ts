@@ -28,6 +28,7 @@
  */
 
 import { z } from 'zod';
+import { emailSchema, passwordSchema } from './auth.js';
 import { assertBusinessDate, type BusinessDate } from './business-date.js';
 import { assertSatang, type Satang } from './money.js';
 import { Role, StaffStatus, WageType } from './enums.js';
@@ -279,6 +280,11 @@ const staffFields = z.object({
   position: optionalText(40),
   role: roleSchema,
   phone: optionalText(20),
+  /**
+   * Optional and nullable: most people have none, and clearing it is how an
+   * account stops being able to reach the back office by username.
+   */
+  email: emailSchema.nullable().optional(),
 
   startDate: businessDateSchema,
   endDate: businessDateSchema.nullish(),
@@ -321,6 +327,9 @@ export type StaffCreateRequest = z.infer<typeof staffCreateRequestSchema>;
 export const staffPinRequestSchema = z.object({ pin: pinSchema });
 export type StaffPinRequest = z.infer<typeof staffPinRequestSchema>;
 
+export const staffPasswordRequestSchema = z.object({ password: passwordSchema });
+export type StaffPasswordRequest = z.infer<typeof staffPasswordRequestSchema>;
+
 /**
  * A staff member as sent to the screen.
  *
@@ -336,6 +345,12 @@ export const staffDtoSchema = z.object({
   position: z.string().nullable(),
   role: roleSchema,
   phone: z.string().nullable(),
+  /** The back office username. null for everyone who does not have one. */
+  email: z.string().nullable(),
+  /** Whether a password is set. The hash itself never leaves the API. */
+  hasOfficeAccess: z.boolean(),
+  /** True while the password lockout is in force, so the screen can say so. */
+  isLoginLocked: z.boolean(),
 
   startDate: businessDateSchema,
   endDate: businessDateSchema.nullable(),

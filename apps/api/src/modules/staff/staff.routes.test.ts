@@ -14,9 +14,10 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { Role, type StaffListResponse, type DeductionListResponse } from '@pos/shared';
+import bcrypt from 'bcryptjs';
+import { Role, StaffStatus, type StaffListResponse, type DeductionListResponse } from '@pos/shared';
 import { prisma } from '../../db.js';
-import { buildTestApp, loginAs } from '../../test-helpers.js';
+import { buildTestApp, loginAs, SEED_OFFICE } from '../../test-helpers.js';
 
 /** Every row this file writes. The cleanup below deletes nothing else. */
 const PREFIX = 'ทดสอบพนักงาน';
@@ -66,6 +67,61 @@ async function createdIds(): Promise<string[]> {
   return rows.map((row) => row.id);
 }
 
+/**
+ * A staff row this file owns and deletes again.
+ *
+ * Each one gets a unique email off a counter: the index is table-wide, so two
+ * throwaways sharing an address would collide with each other rather than with
+ * the thing under test, and the failure would read as a bug in the endpoint.
+ *
+ * Deliberately NOT named with PREFIX — afterEach sweeps those away between
+ * tests, and these have to survive long enough to be logged in as.
+ */
+const throwaways: string[] = [];
+
+async function makeThrowawayStaff(
+  over: { email?: string | null } = {},
+): Promise<{ id: string; email: string }> {
+  const email = over.email === undefined ? `throwaway-${throwaways.length}@test.local` : over.email;
+
+  const staff = await prisma.staff.create({
+    data: {
+      branchId,
+      fullName: `ชั่วคราว ทดสอบ ${throwaways.length}`,
+      nickname: 'ชั่วคราว',
+      role: Role.STAFF,
+      pinHash: await bcrypt.hash(String(6000 + throwaways.length), 10),
+      startDate: new Date('2026-01-01T00:00:00Z'),
+      status: StaffStatus.ACTIVE,
+      email,
+    },
+  });
+  throwaways.push(staff.id);
+  return { id: staff.id, email: email ?? '' };
+}
+
+/** A body that satisfies staffRequestSchema, for the PUT tests. */
+function throwawayPayload(): Record<string, unknown> {
+  return {
+    fullName: 'ชั่วคราว ทดสอบ แก้ไข',
+    nickname: 'ชั่วคราว',
+    position: null,
+    role: Role.STAFF,
+    phone: null,
+    startDate: '2026-01-01',
+    endDate: null,
+    status: StaffStatus.ACTIVE,
+    nationality: 'TH',
+    passportNo: null,
+    passportExpiry: null,
+    workPermitNo: null,
+    workPermitExpiry: null,
+    wageType: 'DAILY',
+    wageRateSatang: 40000,
+    note: null,
+  };
+}
+
 beforeAll(async () => {
   app = await buildTestApp();
   owner = await loginAs(app, Role.OWNER);
@@ -94,6 +150,9 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
+  await prisma.session.deleteMany({ where: { staffId: { in: throwaways } } });
+  await prisma.auditLog.deleteMany({ where: { entityId: { in: throwaways } } });
+  await prisma.staff.deleteMany({ where: { id: { in: throwaways } } });
   await app.close();
 });
 
@@ -434,5 +493,139 @@ describe('deductions', () => {
     });
     expect(response.statusCode).toBe(409);
     expect(response.json().error).toBe('DEDUCTION_SETTLED');
+  });
+});
+
+describe('back office access', () => {
+  it('reports who has it and who does not', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/staff',
+      headers: { cookie: owner.cookie },
+    });
+
+    const body: StaffListResponse = response.json();
+    const seededOwner = body.staff.find((row) => row.role === Role.OWNER);
+    expect(seededOwner?.hasOfficeAccess).toBe(true);
+    expect(seededOwner?.email).toBe(SEED_OFFICE.email);
+  });
+
+  it('never returns the password hash', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/staff',
+      headers: { cookie: owner.cookie },
+    });
+    expect(response.body).not.toMatch(/\$2[aby]\$/);
+    expect(response.body).not.toContain('passwordHash');
+  });
+
+  it('gives someone office access by setting a password', async () => {
+    const staff = await makeThrowawayStaff();
+
+    const set = await app.inject({
+      method: 'POST',
+      url: `/api/staff/${staff.id}/password`,
+      headers: { cookie: owner.cookie },
+      payload: { password: 'a-password-long-enough' },
+    });
+    expect(set.statusCode).toBe(200);
+
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/auth/office/login',
+      payload: { email: staff.email, password: 'a-password-long-enough' },
+    });
+    expect(login.statusCode).toBe(200);
+  });
+
+  it('refuses to set a password on someone with no email to log in with', async () => {
+    // An account with a password and no username is not an account, it is a
+    // hash nobody can ever present a credential against.
+    const staff = await makeThrowawayStaff({ email: null });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/staff/${staff.id}/password`,
+      headers: { cookie: owner.cookie },
+      payload: { password: 'a-password-long-enough' },
+    });
+    expect(response.statusCode).toBe(409);
+  });
+
+  it('refuses an email another person already has', async () => {
+    const staff = await makeThrowawayStaff();
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: `/api/staff/${staff.id}`,
+      headers: { cookie: owner.cookie },
+      payload: { ...throwawayPayload(), email: SEED_OFFICE.email },
+    });
+    // Unique across the whole table, not per branch — the office login has no
+    // branch picker, so an email must point at exactly one row.
+    expect(response.statusCode).toBe(409);
+  });
+
+  it('takes office access away and kills the sessions it was holding', async () => {
+    const staff = await makeThrowawayStaff();
+
+    await app.inject({
+      method: 'POST',
+      url: `/api/staff/${staff.id}/password`,
+      headers: { cookie: owner.cookie },
+      payload: { password: 'a-password-long-enough' },
+    });
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/auth/office/login',
+      payload: { email: staff.email, password: 'a-password-long-enough' },
+    });
+    const theirCookie = (login.headers['set-cookie'] as string[])[0]?.split(';')[0] as string;
+
+    const revoke = await app.inject({
+      method: 'DELETE',
+      url: `/api/staff/${staff.id}/password`,
+      headers: { cookie: owner.cookie },
+    });
+    expect(revoke.statusCode).toBe(200);
+
+    // The point of the whole sessions table: cutting access off means NOW, not
+    // when the token they are already holding happens to expire.
+    const after = await app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      headers: { cookie: theirCookie },
+    });
+    expect(after.statusCode).toBe(401);
+  });
+
+  it('writes an audit row that does not contain the password', async () => {
+    const staff = await makeThrowawayStaff();
+
+    await app.inject({
+      method: 'POST',
+      url: `/api/staff/${staff.id}/password`,
+      headers: { cookie: owner.cookie },
+      payload: { password: 'a-password-long-enough' },
+    });
+
+    const rows = await prisma.auditLog.findMany({
+      where: { entityId: staff.id, action: 'SET_STAFF_PASSWORD' },
+    });
+    expect(rows.length).toBe(1);
+    expect(JSON.stringify(rows)).not.toContain('a-password-long-enough');
+  });
+
+  it('needs MANAGE_STAFF, like every other write here', async () => {
+    const staff = await makeThrowawayStaff();
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/staff/${staff.id}/password`,
+      headers: { cookie: manager.cookie },
+      payload: { password: 'a-password-long-enough' },
+    });
+    expect(response.statusCode).toBe(403);
   });
 });
