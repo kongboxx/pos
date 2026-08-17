@@ -17,11 +17,15 @@
  */
 
 import { randomInt } from 'node:crypto';
+import { PASSWORD_MIN_LENGTH } from '@pos/shared';
 
 export interface NewShopOwner {
   fullName: string;
   nickname: string;
   pin: string;
+  /** The username for office.<domain>. Unique across the whole staff table. */
+  email: string;
+  password: string;
 }
 
 export interface NewShop {
@@ -33,12 +37,20 @@ export interface NewShop {
    * made up. A generated PIN that is never shown is a locked shop.
    */
   pinWasGenerated: boolean;
+  /** Same, for the back office password. */
+  passwordWasGenerated: boolean;
 }
 
 export const SHOP_DEFAULTS = {
   name: 'ร้านของฉัน',
   branchCode: 'HQ',
   ownerFullName: 'เจ้าของร้าน',
+  /**
+   * Deliberately not a real-looking address. It appears on the setup output
+   * and has to read as "change this", not as an address that might belong to
+   * a stranger who would then receive the shop's password reset one day.
+   */
+  ownerEmail: 'owner@localhost',
 } as const;
 
 const MAX_NAME = 80;
@@ -55,6 +67,32 @@ export function generatePin(): string {
   return String(randomInt(0, 10_000)).padStart(4, '0');
 }
 
+/**
+ * Characters that survive being read off a terminal and typed into a browser.
+ *
+ * No 0/O, no 1/l/I. This string is shown exactly once, to someone who cannot
+ * ask for it again, and "was that a one or an ell" is how a shop locks itself
+ * out on setup day.
+ */
+const PASSWORD_ALPHABET = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+/** Long enough that nobody needs to think about whether it is long enough. */
+const GENERATED_PASSWORD_LENGTH = 20;
+
+/**
+ * A random password for the back office.
+ *
+ * `randomInt`, not `Math.random`, for the same reason as the PIN: this opens
+ * the screen with every wage and passport number in the shop on it.
+ */
+export function generatePassword(): string {
+  let out = '';
+  for (let index = 0; index < GENERATED_PASSWORD_LENGTH; index += 1) {
+    out += PASSWORD_ALPHABET[randomInt(0, PASSWORD_ALPHABET.length)];
+  }
+  return out;
+}
+
 /** Reads one variable, treating whitespace-only as absent. */
 function read(env: NodeJS.ProcessEnv, key: string): string | undefined {
   const value = env[key]?.trim();
@@ -64,6 +102,7 @@ function read(env: NodeJS.ProcessEnv, key: string): string | undefined {
 export function resolveNewShop(
   env: NodeJS.ProcessEnv = process.env,
   makePin: () => string = generatePin,
+  makePassword: () => string = generatePassword,
 ): NewShop {
   const problems: string[] = [];
 
@@ -96,6 +135,23 @@ export function resolveNewShop(
     problems.push('OWNER_PIN ต้องเป็นตัวเลข 4 หลัก');
   }
 
+  const email = read(env, 'OWNER_EMAIL')?.toLowerCase() ?? SHOP_DEFAULTS.ownerEmail;
+  // Deliberately loose: one @, something either side, no spaces. A stricter
+  // pattern here would reject valid addresses, and the only thing this field
+  // does is identify one row — it is never posted to.
+  if (!/^[^\s@]+@[^\s@]+$/.test(email)) {
+    problems.push(`OWNER_EMAIL ต้องเป็นอีเมลที่ถูกต้อง (ได้ "${email}")`);
+  }
+
+  // NOT via read(): that trims, and a leading or trailing space is part of a
+  // password. Only "absent" and "present but empty" collapse together here.
+  const typedPassword = env['OWNER_PASSWORD'];
+  const hasPassword = typedPassword !== undefined && typedPassword !== '';
+  if (hasPassword && new TextEncoder().encode(typedPassword).length < PASSWORD_MIN_LENGTH) {
+    // The password itself is never echoed back, exactly like the PIN above.
+    problems.push(`OWNER_PASSWORD ต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร`);
+  }
+
   if (problems.length > 0) {
     throw new Error(`ตั้งค่าร้านไม่ถูกต้อง:\n${problems.map((line) => `  - ${line}`).join('\n')}`);
   }
@@ -103,7 +159,14 @@ export function resolveNewShop(
   return {
     name,
     branchCode,
-    owner: { fullName, nickname, pin: typedPin ?? makePin() },
+    owner: {
+      fullName,
+      nickname,
+      pin: typedPin ?? makePin(),
+      email,
+      password: hasPassword ? typedPassword : makePassword(),
+    },
     pinWasGenerated: typedPin === undefined,
+    passwordWasGenerated: !hasPassword,
   };
 }

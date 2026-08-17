@@ -90,6 +90,8 @@ async function seedStaff(branchId: string): Promise<void> {
       position: 'เจ้าของ',
       role: 'OWNER',
       pin: '1111',
+      email: 'owner@demo.local',
+      password: 'demo-password-1234',
       wageType: 'MONTHLY',
       wageRateSatang: 0,
       nationality: 'TH',

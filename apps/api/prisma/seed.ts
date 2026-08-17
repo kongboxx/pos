@@ -25,6 +25,8 @@
  *   OWNER_NAME      ชื่อ-นามสกุลเจ้าของ        (default เจ้าของร้าน)
  *   OWNER_NICKNAME  ชื่อเล่นที่โชว์บนบิล/ครัว   (default = OWNER_NAME)
  *   OWNER_PIN       PIN 4 หลัก               (default: สุ่มให้ แล้วพิมพ์บนจอครั้งเดียว)
+ *   OWNER_EMAIL     อีเมลเข้าหลังร้าน         (default owner@localhost)
+ *   OWNER_PASSWORD  รหัสผ่านหลังร้าน          (default: สุ่มให้ แล้วพิมพ์บนจอครั้งเดียว)
  *
  * Safe to run again: it never overwrites a branch setting or a PIN that has
  * been changed since. See prisma/seed-core.ts.
@@ -60,6 +62,8 @@ async function main(): Promise<void> {
       position: 'เจ้าของ',
       role: 'OWNER',
       pin: shop.owner.pin,
+      email: shop.owner.email,
+      password: shop.owner.password,
       wageType: 'MONTHLY',
       wageRateSatang: 0,
       nationality: 'TH',
@@ -76,18 +80,25 @@ async function main(): Promise<void> {
 
   if (outcome === 'created') {
     console.log(`  เจ้าของ: ${shop.owner.fullName}`);
-    if (shop.pinWasGenerated) {
-      // The only time this PIN is ever readable. It is stored as a bcrypt hash
-      // and there is no screen anywhere that can show it again.
+    console.log(`  อีเมลเข้าหลังร้าน: ${shop.owner.email}`);
+
+    if (shop.pinWasGenerated || shop.passwordWasGenerated) {
+      // The only time either of these is ever readable. Both are stored as
+      // bcrypt hashes and there is no screen anywhere that can show them again.
       console.log('');
       console.log('  ================================================');
-      console.log(`  PIN สำหรับเข้าระบบ: ${shop.owner.pin}`);
+      if (shop.pinWasGenerated) {
+        console.log(`  PIN หน้าร้าน:      ${shop.owner.pin}`);
+      }
+      if (shop.passwordWasGenerated) {
+        console.log(`  รหัสผ่านหลังร้าน:  ${shop.owner.password}`);
+      }
       console.log('  จดไว้ก่อนปิดหน้าต่างนี้ — ดูย้อนหลังไม่ได้');
       console.log('  เปลี่ยนได้ทีหลังที่หน้า "พนักงาน"');
       console.log('  ================================================');
     }
   } else {
-    console.log(`  เจ้าของ: ${shop.owner.fullName} (มีอยู่แล้ว — ไม่ได้แตะ PIN เดิม)`);
+    console.log(`  เจ้าของ: ${shop.owner.fullName} (มีอยู่แล้ว — ไม่ได้แตะ PIN หรือรหัสผ่านเดิม)`);
   }
 
   console.log('');

@@ -100,6 +100,67 @@ describe('what it refuses', () => {
   });
 });
 
+describe('the owner email and password', () => {
+  it('defaults the email to something obviously a placeholder', () => {
+    const shop = resolveNewShop({}, pin);
+    // Not a real-looking address: this shows up on the setup screen and it must
+    // read as "change me", not as an address that might be someone's.
+    expect(shop.owner.email).toBe('owner@localhost');
+  });
+
+  it('takes the email from the environment, lowercased', () => {
+    const shop = resolveNewShop({ OWNER_EMAIL: '  Noi@Example.COM ' }, pin);
+    expect(shop.owner.email).toBe('noi@example.com');
+  });
+
+  it('rejects something that is not an email', () => {
+    expect(() => resolveNewShop({ OWNER_EMAIL: 'noi' }, pin)).toThrow(/OWNER_EMAIL/);
+  });
+
+  it('generates a password when none is given, and says it did', () => {
+    const shop = resolveNewShop({}, pin);
+    expect(shop.passwordWasGenerated).toBe(true);
+    expect(shop.owner.password.length).toBeGreaterThanOrEqual(16);
+  });
+
+  it('takes the password from the environment without touching it', () => {
+    // Not trimmed, not normalised. Whatever the owner typed IS the password.
+    const shop = resolveNewShop({ OWNER_PASSWORD: 'correct horse battery ' }, pin);
+    expect(shop.owner.password).toBe('correct horse battery ');
+    expect(shop.passwordWasGenerated).toBe(false);
+  });
+
+  it('rejects a password too short to be one', () => {
+    expect(() => resolveNewShop({ OWNER_PASSWORD: 'short' }, pin)).toThrow(/OWNER_PASSWORD/);
+  });
+
+  it('never puts the password in the error message', () => {
+    // This error goes to a terminal that scrolls, into CI logs, into a
+    // screenshot someone sends for help. Same rule the PIN already follows.
+    const secret = 'hunter2-but-long-enough-to-pass';
+    try {
+      resolveNewShop({ OWNER_PASSWORD: secret, SHOP_CODE: 'ไม่ถูก' }, pin);
+      throw new Error('should have thrown');
+    } catch (error) {
+      expect((error as Error).message).not.toContain(secret);
+    }
+  });
+
+  it('generates a different password every time', () => {
+    const a = resolveNewShop({}, pin).owner.password;
+    const b = resolveNewShop({}, pin).owner.password;
+    expect(a).not.toBe(b);
+  });
+
+  it('generates a password with no look-alike characters in it', () => {
+    // This gets read off a terminal and typed into a browser, once, by someone
+    // who cannot ask for it again. 0/O and 1/l/I are how that goes wrong.
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      expect(resolveNewShop({}, pin).owner.password).not.toMatch(/[0O1lI]/);
+    }
+  });
+});
+
 describe('generatePin', () => {
   it('is always four digits, leading zeros included', () => {
     for (let attempt = 0; attempt < 200; attempt += 1) {

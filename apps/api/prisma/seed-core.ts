@@ -17,6 +17,7 @@
 
 import type { Prisma, PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { hashPassword } from '../src/modules/auth/office-auth.service.js';
 
 /**
  * Cheap on purpose. Seeded PINs are dev PINs or a first-login PIN that gets
@@ -68,6 +69,9 @@ export interface StaffSeed {
   position: string;
   role: 'OWNER' | 'MANAGER' | 'STAFF';
   pin: string;
+  /** Back office login. Both optional: a cashier has neither. */
+  email?: string;
+  password?: string;
   wageType: 'MONTHLY' | 'DAILY';
   wageRateSatang: number;
   nationality: 'TH' | 'FOREIGN';
@@ -106,6 +110,8 @@ export async function upsertStaff(
     position: person.position,
     role: person.role,
     pinHash: await bcrypt.hash(person.pin, PIN_SALT_ROUNDS),
+    email: person.email ?? null,
+    passwordHash: person.password ? await hashPassword(person.password) : null,
     startDate: person.startDate ?? new Date(),
     status: 'ACTIVE',
     nationality: person.nationality,

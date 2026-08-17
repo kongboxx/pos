@@ -28,6 +28,12 @@ export const SEED_PINS: Readonly<Record<Role, string>> = {
   STAFF: '3333',
 };
 
+/** The back office account created by prisma/seed-demo.ts. Dev data only. */
+export const SEED_OFFICE = {
+  email: 'owner@demo.local',
+  password: 'demo-password-1234',
+} as const;
+
 export async function buildTestApp(
   overrides: Record<string, string> = {},
 ): Promise<FastifyInstance> {
