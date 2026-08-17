@@ -284,3 +284,53 @@ describe('/auth/me', () => {
     expect(response.statusCode).toBe(200);
   });
 });
+
+describe('signing out everywhere', () => {
+  it('kills every session this person has, including the one that asked', async () => {
+    // Two logins for the same person — a tablet and a phone, say.
+    const first = await loginAs(app, Role.MANAGER);
+    const second = await loginAs(app, Role.MANAGER);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sessions/revoke-all',
+      headers: { cookie: second.cookie },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().revoked).toBeGreaterThanOrEqual(2);
+
+    // Including itself: "sign out everywhere" that leaves the asking device
+    // signed in is not what the words say.
+    for (const session of [first, second]) {
+      const check = await app.inject({
+        method: 'GET',
+        url: '/api/auth/me',
+        headers: { cookie: session.cookie },
+      });
+      expect(check.statusCode).toBe(401);
+    }
+  });
+
+  it('401s without a session, because there is nobody to sign out', async () => {
+    const response = await app.inject({ method: 'POST', url: '/api/auth/sessions/revoke-all' });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('touches nobody else', async () => {
+    const mine = await loginAs(app, Role.MANAGER);
+    const theirs = await loginAs(app, Role.STAFF);
+
+    await app.inject({
+      method: 'POST',
+      url: '/api/auth/sessions/revoke-all',
+      headers: { cookie: mine.cookie },
+    });
+
+    const check = await app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      headers: { cookie: theirs.cookie },
+    });
+    expect(check.statusCode).toBe(200);
+  });
+});

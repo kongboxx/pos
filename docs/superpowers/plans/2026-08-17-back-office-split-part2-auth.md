@@ -1506,7 +1506,7 @@ signs in once more after deploy."
 - Consumes: `app.sessions` จาก Task 4
 - Produces: `POST /auth/sessions/revoke-all` · `pnpm --filter @pos/api sessions:purge`
 
-- [ ] **Step 1: เขียนเทสต์ที่ยังไม่ผ่าน**
+- [x] **Step 1: เขียนเทสต์ที่ยังไม่ผ่าน**
 
 เพิ่ม describe ใหม่ท้าย `apps/api/src/modules/auth/auth.routes.test.ts`:
 
@@ -1562,7 +1562,7 @@ describe('signing out everywhere', () => {
 });
 ```
 
-- [ ] **Step 2: รันแล้วดูให้แน่ใจว่าแดง**
+- [x] **Step 2: รันแล้วดูให้แน่ใจว่าแดง**
 
 ```bash
 pnpm --filter @pos/api test -- src/modules/auth/auth.routes.test.ts
@@ -1570,7 +1570,7 @@ pnpm --filter @pos/api test -- src/modules/auth/auth.routes.test.ts
 
 คาดหวัง: FAIL — 404 `ไม่พบเส้นทาง POST /api/auth/sessions/revoke-all`
 
-- [ ] **Step 3: เพิ่ม endpoint**
+- [x] **Step 3: เพิ่ม endpoint**
 
 ใน `apps/api/src/modules/auth/auth.routes.ts` ต่อจาก `/auth/logout`:
 
@@ -1597,7 +1597,7 @@ app.post('/auth/sessions/revoke-all', { preHandler: requireAuth }, async (reques
 });
 ```
 
-- [ ] **Step 4: รันเทสต์**
+- [x] **Step 4: รันเทสต์**
 
 ```bash
 pnpm --filter @pos/api test -- src/modules/auth/auth.routes.test.ts
@@ -1605,7 +1605,7 @@ pnpm --filter @pos/api test -- src/modules/auth/auth.routes.test.ts
 
 คาดหวัง: PASS
 
-- [ ] **Step 5: เขียนสคริปต์ล้างเซสชันเก่า**
+- [x] **Step 5: เขียนสคริปต์ล้างเซสชันเก่า**
 
 สร้าง `apps/api/scripts/purge-sessions.ts`:
 
@@ -1648,7 +1648,7 @@ main()
   });
 ```
 
-- [ ] **Step 6: เพิ่ม script ใน `apps/api/package.json`**
+- [x] **Step 6: เพิ่ม script ใน `apps/api/package.json`**
 
 ใน `"scripts"` ต่อจาก `"db:studio"`:
 
@@ -1656,7 +1656,7 @@ main()
     "sessions:purge": "tsx scripts/purge-sessions.ts",
 ```
 
-- [ ] **Step 7: รันสคริปต์จริงหนึ่งครั้ง**
+- [x] **Step 7: รันสคริปต์จริงหนึ่งครั้ง**
 
 ```bash
 pnpm --filter @pos/api sessions:purge
@@ -1664,7 +1664,7 @@ pnpm --filter @pos/api sessions:purge
 
 คาดหวัง: `ลบเซสชันที่หมดอายุเกิน 90 วัน: 0 แถว` (ฐานข้อมูล dev ยังไม่มีเซสชันเก่าขนาดนั้น) · ต้องจบด้วย exit code 0
 
-- [ ] **Step 8: เทสต์ทั้ง workspace แล้ว commit**
+- [x] **Step 8: เทสต์ทั้ง workspace แล้ว commit**
 
 ```bash
 pnpm test

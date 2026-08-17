@@ -18,6 +18,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:demo": "tsx prisma/seed-demo.ts",
     "db:studio": "prisma studio",
+    "sessions:purge": "tsx scripts/purge-sessions.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

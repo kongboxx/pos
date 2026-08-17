@@ -180,6 +180,27 @@ export function registerAuthRoutes(app: FastifyInstance, options: { env: Env }):
   });
 
   /**
+   * Sign out of every device.
+   *
+   * The button for "I left my phone in a taxi", and the only honest answer to
+   * it. Includes the session making the request — a version that spared the
+   * caller would leave exactly one device signed in, which is the one case
+   * where the person cannot check.
+   *
+   * No permission gate: this only ever ends the caller's own sessions, and
+   * needing a permission to lock your own account is a rule that fires on the
+   * day it is least welcome.
+   */
+  app.post('/auth/sessions/revoke-all', { preHandler: requireAuth }, async (request, reply) => {
+    const revoked = await app.sessions.revokeAllFor(request.user.staffId);
+
+    return reply
+      .clearCookie(SESSION_COOKIE_NAME, { path: '/' })
+      .clearCookie(OFFICE_SESSION_COOKIE_NAME, { path: '/' })
+      .send({ ok: true, revoked });
+  });
+
+  /**
    * Who am I. The PWA calls this on every boot instead of remembering the
    * session itself — storing it would mean writing identity to disk, and the
    * only copy of a session belongs in the httpOnly cookie.
