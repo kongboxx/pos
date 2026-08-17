@@ -1722,7 +1722,7 @@ belongs to plan 3. It is safe to not run: the table grows by a few rows a day."
 
   Task 7, 9, 10 ใช้ทั้งหมดนี้
 
-- [ ] **Step 1: เขียนเทสต์ของ schema ที่ยังไม่ผ่าน**
+- [x] **Step 1: เขียนเทสต์ของ schema ที่ยังไม่ผ่าน**
 
 เพิ่มใน `packages/shared/src/auth.test.ts`:
 
@@ -1785,7 +1785,7 @@ describe('the office login request', () => {
 });
 ```
 
-- [ ] **Step 2: รันแล้วดูให้แน่ใจว่าแดง**
+- [x] **Step 2: รันแล้วดูให้แน่ใจว่าแดง**
 
 ```bash
 pnpm --filter @pos/shared test -- src/auth.test.ts
@@ -1793,7 +1793,7 @@ pnpm --filter @pos/shared test -- src/auth.test.ts
 
 คาดหวัง: FAIL — `passwordSchema` ยังไม่มี
 
-- [ ] **Step 3: เพิ่ม schema ใน `@pos/shared`**
+- [x] **Step 3: เพิ่ม schema ใน `@pos/shared`**
 
 ต่อท้าย `packages/shared/src/auth.ts`:
 
@@ -1859,7 +1859,7 @@ export const officeLoginRequestSchema = z.object({
 export type OfficeLoginRequest = z.infer<typeof officeLoginRequestSchema>;
 ```
 
-- [ ] **Step 4: รันเทสต์ shared**
+- [x] **Step 4: รันเทสต์ shared**
 
 ```bash
 pnpm --filter @pos/shared test -- src/auth.test.ts
@@ -1867,7 +1867,7 @@ pnpm --filter @pos/shared test -- src/auth.test.ts
 
 คาดหวัง: PASS 8 ตัว
 
-- [ ] **Step 5: เขียนเทสต์ของ service ที่ยังไม่ผ่าน**
+- [x] **Step 5: เขียนเทสต์ของ service ที่ยังไม่ผ่าน**
 
 สร้าง `apps/api/src/modules/auth/office-auth.service.test.ts`:
 
@@ -2044,7 +2044,7 @@ describe('an email that cannot log in', () => {
 });
 ```
 
-- [ ] **Step 6: รันแล้วดูให้แน่ใจว่าแดง**
+- [x] **Step 6: รันแล้วดูให้แน่ใจว่าแดง**
 
 ```bash
 pnpm build:shared && pnpm --filter @pos/api test -- src/modules/auth/office-auth.service.test.ts
@@ -2052,7 +2052,7 @@ pnpm build:shared && pnpm --filter @pos/api test -- src/modules/auth/office-auth
 
 คาดหวัง: FAIL — `Cannot find module './office-auth.service.js'`
 
-- [ ] **Step 7: เขียน `office-auth.service.ts`**
+- [x] **Step 7: เขียน `office-auth.service.ts`**
 
 สร้าง `apps/api/src/modules/auth/office-auth.service.ts`:
 
@@ -2198,7 +2198,7 @@ export class OfficeAuthService {
 > `node -e "console.log(require('bcryptjs').hashSync(require('crypto').randomBytes(32).toString('hex'), 12))"`
 > แล้ววางทับ · **อย่าใช้รหัสผ่านจริงของใครสร้าง**
 
-- [ ] **Step 8: รันเทสต์**
+- [x] **Step 8: รันเทสต์**
 
 ```bash
 pnpm --filter @pos/api test -- src/modules/auth/office-auth.service.test.ts
@@ -2206,13 +2206,19 @@ pnpm --filter @pos/api test -- src/modules/auth/office-auth.service.test.ts
 
 คาดหวัง: PASS 11 ตัว
 
-- [ ] **Step 9: เทสต์ทั้ง workspace แล้ว commit**
+> **ผลจริง 2026-08-17** — เทสต์ในแผนมี **10 ตัว** ไม่ใช่ 11 (3 + 3 + 4) · เป็นการนับพลาดของแผนเอง ไม่ใช่เทสต์หาย
+>
+> **เทสต์ล็อกบัญชี timeout:** `freezes the account after enough of them` เรียก bcrypt cost 12 สิบเอ็ดครั้ง ≈ 12 วินาที ชนกับ timeout 5 วินาทีของ vitest · แผนคำนวณ "~0.6-1.2s ต่อครั้ง" ไว้เองในคอมเมนต์ของ `PASSWORD_SALT_ROUNDS` แต่ไม่ได้คิดตอนวนลูป · แก้ด้วยการให้ timeout เฉพาะเทสต์นั้น `it(name, fn, 60_000)` — ไม่ลดจำนวนรอบและไม่ลด cost เพราะความช้าคือสิ่งที่กำลังทดสอบอยู่
+>
+> `ABSENT_ACCOUNT_HASH` สร้างใหม่จาก 32 random bytes · ขึ้นต้น `$2a$` เพราะ bcryptjs ออกแบบไว้อย่างนั้น ไม่ใช่ `$2b$` อย่างที่แผนเขียน (ใช้ได้ทั้งคู่)
+
+- [x] **Step 9: เทสต์ทั้ง workspace แล้ว commit**
 
 ```bash
 pnpm test
 ```
 
-คาดหวัง: 1,170 ผ่าน (`@pos/shared` +8, `@pos/api` +11)
+คาดหวัง: 1,170 ผ่าน (`@pos/shared` +8, `@pos/api` +11) — **วัดจริงได้ 1,169** เพราะ Task นี้มีเทสต์ 10 ตัวไม่ใช่ 11 · ทุก task หลังจากนี้ให้ลบ 1 จากตัวเลขในแผน
 
 ```bash
 git add packages/shared/src/auth.ts packages/shared/src/auth.test.ts apps/api/src/modules/auth/office-auth.service.ts apps/api/src/modules/auth/office-auth.service.test.ts

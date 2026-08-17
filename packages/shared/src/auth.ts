@@ -128,3 +128,87 @@ export const meResponseSchema = z.object({
   }),
 });
 export type MeResponse = z.infer<typeof meResponseSchema>;
+
+/* ------------------------------------------------------------------ */
+/* the back office door (plan 2)                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Length, and only length.
+ *
+ * No rule about capitals or symbols, on purpose and following NIST: those
+ * rules do not add entropy, they add Passw0rd! — a password that satisfies
+ * every requirement and sits on every cracking list.
+ */
+export const PASSWORD_MIN_LENGTH = 12;
+
+/**
+ * bcrypt hashes the first 72 BYTES of its input and silently ignores whatever
+ * follows. Accepting more would let someone set a 200-character password,
+ * believe it is a 200-character password, and have the last 128 characters
+ * count for nothing. Bytes, not characters: a Thai character is three of them,
+ * so this is 24 Thai characters and 72 ASCII ones.
+ */
+export const PASSWORD_MAX_BYTES = 72;
+
+/**
+ * Wrong passwords allowed before the account freezes.
+ *
+ * Looser than the PIN's five, deliberately. A 12-character password is not
+ * brute-forced in ten guesses or in ten million, so a tight lockout here buys
+ * almost no protection — while handing anyone who knows the owner's email a
+ * way to lock them out of their own accounts on payroll day. The per-IP limit
+ * in the route is what actually holds; this is the backstop behind it.
+ */
+export const MAX_PASSWORD_ATTEMPTS = 10;
+export const PASSWORD_LOCKOUT_MS = 15 * 60 * 1000;
+
+/** Lowercased and trimmed, so the unique index means what a human means. */
+export const emailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .email('อีเมลไม่ถูกต้อง')
+  .max(160, 'อีเมลยาวเกินไป');
+
+/**
+ * How many bytes this string is once encoded as UTF-8.
+ *
+ * Counted by hand rather than with `TextEncoder`, which exists in both Node and
+ * the browser but is declared in neither of the type libraries this package
+ * compiles against (`lib: ["ES2022"]`, no DOM and no node types — see
+ * tsconfig.base.json). Adding DOM for one class would hand a package that must
+ * never touch the DOM the whole DOM.
+ *
+ * `for...of` over a string yields code points, not UTF-16 units, so an emoji
+ * counts once at four bytes instead of twice at three.
+ */
+function utf8ByteLength(value: string): number {
+  let bytes = 0;
+  for (const character of value) {
+    const code = character.codePointAt(0) ?? 0;
+    if (code <= 0x7f) bytes += 1;
+    else if (code <= 0x7ff) bytes += 2;
+    else if (code <= 0xffff) bytes += 3;
+    else bytes += 4;
+  }
+  return bytes;
+}
+
+/**
+ * NOT trimmed. A leading or trailing space is part of the secret, and trimming
+ * it would make a password that works in one client fail in another.
+ */
+export const passwordSchema = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH, `รหัสผ่านต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร`)
+  .refine(
+    (value) => utf8ByteLength(value) <= PASSWORD_MAX_BYTES,
+    `รหัสผ่านยาวเกินไป (ยาวได้ถึง ${PASSWORD_MAX_BYTES} ไบต์ — ภาษาไทยตัวละ 3 ไบต์)`,
+  );
+
+export const officeLoginRequestSchema = z.object({
+  email: emailSchema,
+  password: passwordSchema,
+});
+export type OfficeLoginRequest = z.infer<typeof officeLoginRequestSchema>;
