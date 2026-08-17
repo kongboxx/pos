@@ -97,7 +97,11 @@ describe('LoginPage', () => {
     await waitFor(() => {
       // No branch id: with one shop there is nothing to pick, and the server
       // resolves it exactly as it did before there was more than one branch.
-      expect(api.login).toHaveBeenCalledWith(STAFF.id, '1234', undefined);
+      expect(api.login).toHaveBeenCalledWith({
+        staffId: STAFF.id,
+        pin: '1234',
+        branchId: undefined,
+      });
     });
   });
 
@@ -122,7 +126,7 @@ describe('LoginPage', () => {
     }
 
     await waitFor(() => {
-      expect(api.login).toHaveBeenCalledWith(STAFF.id, '1234', 'b2');
+      expect(api.login).toHaveBeenCalledWith({ staffId: STAFF.id, pin: '1234', branchId: 'b2' });
     });
     // The staff list must be the CHOSEN shop's, not the default branch's —
     // otherwise the picker is decoration and branch 2 gets branch 1's names.

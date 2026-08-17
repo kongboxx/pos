@@ -12,7 +12,7 @@
  * unpicked then.
  */
 
-import { createHttp, type ApiResult } from '@pos/web-kit';
+import { createHttp, type ApiResult, type PinCredentials } from '@pos/web-kit';
 import type {
   AllBranchesResponse,
   BranchChoiceList,
@@ -71,12 +71,12 @@ export const officeApi = {
     ApiResult<{ branch: { id: string; name: string; branchCode: string }; staff: StaffPublic[] }>
   > => request(branchId ? `/auth/staff?branchId=${branchId}` : '/auth/staff'),
 
-  login: (
-    staffId: string,
-    pin: string,
-    branchId?: string,
-  ): Promise<ApiResult<{ user: SessionUser }>> =>
-    post('/auth/login', { staffId, pin, ...(branchId ? { branchId } : {}) }),
+  login: (credentials: PinCredentials): Promise<ApiResult<{ user: SessionUser }>> =>
+    post('/auth/login', {
+      staffId: credentials.staffId,
+      pin: credentials.pin,
+      ...(credentials.branchId ? { branchId: credentials.branchId } : {}),
+    }),
 
   logout: (): Promise<ApiResult<{ ok: true }>> => post('/auth/logout'),
 

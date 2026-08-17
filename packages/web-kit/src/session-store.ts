@@ -17,6 +17,10 @@
  *   the office   passes nothing. It has no local database and must not grow
  *                one: an identity cached in a browser is an identity that
  *                outlives its own revocation.
+ *
+ * They now differ in a second injected way: the credential. The till hands in
+ * a staff id and a PIN, the office an email and a password, and this file has
+ * never heard of either — `C` is whatever the app says it is.
  */
 
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
@@ -37,15 +41,33 @@ export interface SessionPersistence {
   unsentCount(): Promise<number>;
 }
 
-export interface SessionApi {
+/**
+ * The credential each app logs in with.
+ *
+ * Named here rather than inlined so both apps and the store agree on one
+ * shape, and so reading this file tells you there are exactly two doors.
+ */
+export type PinCredentials = {
+  staffId: string;
+  pin: string;
+  branchId?: string | undefined;
+};
+export type OfficeCredentials = { email: string; password: string };
+
+export interface SessionApi<C> {
   me(): Promise<ApiResult<MeResponse>>;
-  login(staffId: string, pin: string, branchId?: string): Promise<ApiResult<{ user: SessionUser }>>;
+  /**
+   * The store never looks inside the credential. It came from the app and it
+   * goes to that app's api client — which is why a PIN and an email+password
+   * can share this file without a branch anywhere in it.
+   */
+  login(credentials: C): Promise<ApiResult<{ user: SessionUser }>>;
   logout(): Promise<ApiResult<unknown>>;
 }
 
 export type SessionStatus = 'loading' | 'anonymous' | 'authenticated';
 
-export interface SessionState {
+export interface SessionState<C> {
   status: SessionStatus;
   user: SessionUser | null;
   branch: MeResponse['branch'] | null;
@@ -53,23 +75,19 @@ export interface SessionState {
   offline: boolean;
 
   refresh: () => Promise<void>;
-  login: (
-    staffId: string,
-    pin: string,
-    branchId?: string,
-  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  login: (credentials: C) => Promise<{ ok: true } | { ok: false; error: string }>;
   logout: () => Promise<{ ok: true } | { ok: false; error: string }>;
   /** Same matrix the API enforces — this only decides whether to draw a button. */
   can: (permission: Permission) => boolean;
 }
 
-export function createSessionStore(deps: {
-  api: SessionApi;
+export function createSessionStore<C>(deps: {
+  api: SessionApi<C>;
   persistence?: SessionPersistence;
-}): UseBoundStore<StoreApi<SessionState>> {
+}): UseBoundStore<StoreApi<SessionState<C>>> {
   const { api, persistence } = deps;
 
-  return create<SessionState>((set, get) => ({
+  return create<SessionState<C>>((set, get) => ({
     status: 'loading',
     user: null,
     branch: null,
@@ -115,8 +133,8 @@ export function createSessionStore(deps: {
       set({ status: 'anonymous', user: null, branch: null, offline: false });
     },
 
-    login: async (staffId, pin, branchId) => {
-      const result = await api.login(staffId, pin, branchId);
+    login: async (credentials) => {
+      const result = await api.login(credentials);
       if (!result.ok) return { ok: false, error: result.error };
       await get().refresh();
       return { ok: true };

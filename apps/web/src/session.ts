@@ -8,7 +8,7 @@
  * lifetime and wiped on logout.
  */
 
-import { createSessionStore, type SessionPersistence } from '@pos/web-kit';
+import { createSessionStore, type PinCredentials, type SessionPersistence } from '@pos/web-kit';
 import { api } from './api-client.js';
 import { forgetIdentity, loadIdentity, saveIdentity } from './offline/catalog.js';
 import { clearLocalData } from './offline/db.js';
@@ -25,4 +25,4 @@ const persistence: SessionPersistence = {
   unsentCount: totalUnsent,
 };
 
-export const useSession = createSessionStore({ api, persistence });
+export const useSession = createSessionStore<PinCredentials>({ api, persistence });

@@ -3852,7 +3852,7 @@ for a token to lapse — which is what the sessions table was for."
 
 > **นี่คือการทำให้ความต่างมองเห็นได้ ไม่ใช่แค่ทำให้ compile ผ่าน** — ก่อนหน้านี้ store บังคับว่าทุกแอปล็อกอินด้วย `(staffId, pin)` ซึ่งเป็นสมมติฐานของหน้าร้านที่ฝังอยู่ในของกลาง · หลัง task นี้ ของกลางไม่รู้ว่ากุญแจหน้าตายังไง แต่ละแอปบอกเอง
 
-- [ ] **Step 1: เขียนเทสต์ที่ยังไม่ผ่าน**
+- [x] **Step 1: เขียนเทสต์ที่ยังไม่ผ่าน**
 
 เพิ่มใน `packages/web-kit/src/session-store.test.ts`:
 
@@ -3893,7 +3893,7 @@ describe('credentials the store does not understand', () => {
 });
 ```
 
-- [ ] **Step 2: รันแล้วดูให้แน่ใจว่าแดง**
+- [x] **Step 2: รันแล้วดูให้แน่ใจว่าแดง**
 
 ```bash
 pnpm --filter @pos/web-kit test
@@ -3901,7 +3901,7 @@ pnpm --filter @pos/web-kit test
 
 คาดหวัง: FAIL — `api.login` ถูกเรียกด้วย `('noi@example.com', 'a-long-password', undefined)` ไม่ใช่ object เดียว
 
-- [ ] **Step 3: แก้ `session-store.ts`**
+- [x] **Step 3: แก้ `session-store.ts`**
 
 `packages/web-kit/src/session-store.ts` — แก้สามจุด:
 
@@ -3972,7 +3972,7 @@ export function createSessionStore<C>(deps: {
  * never heard of either — `C` is whatever the app says it is.
 ```
 
-- [ ] **Step 4: แก้ผู้เรียกทั้งสองฝั่ง**
+- [x] **Step 4: แก้ผู้เรียกทั้งสองฝั่ง**
 
 `apps/web/src/session.ts` — ระบุชนิดตอนสร้าง:
 
@@ -4006,15 +4006,25 @@ const result = await login({ staffId, pin });
 
 พร้อมแก้ `officeApi.login` ใน `apps/office/src/api-office.ts` ให้รับ object แบบเดียวกัน
 
-- [ ] **Step 5: รันเทสต์ทั้ง workspace**
+> **ผลจริง 2026-08-17:** `SessionState` มีคนใช้อีกสองที่ใน web-kit ที่แผนไม่ได้ระบุ — `business-day.ts:18` และ `route-guards.tsx:18` · ทั้งคู่อ่านแค่ `branch` `status` `can` ไม่เคยแตะ `login` เลย แต่เขียน `SessionState` เปล่า ๆ ไว้ พอกลายเป็น generic จึงพัง `TS2314` ทันทีตอน build
+>
+> แก้โดยทำให้ทั้งสองรับ `<C>` แล้วปล่อยให้ inference จัดการ ไม่ใช่ปักเป็น `SessionState<PinCredentials>` — ถ้าปักไว้ store ของหลังร้าน (ซึ่ง Task 12 จะเปลี่ยนเป็น `OfficeCredentials`) จะ compile ไม่ผ่านกับ hook ที่ไม่เคยสนใจรหัสผ่านเลยแม้แต่นิดเดียว · `SessionState<unknown>` ใช้ไม่ได้เพราะ parameter เป็น contravariant: `(c: PinCredentials) => X` assign เข้า `(c: unknown) => X` ไม่ได้ภายใต้ `strictFunctionTypes`
+>
+> `apps/web/src/pages/LoginPage.test.tsx` แดงสองข้อ — assert `toHaveBeenCalledWith(STAFF.id, '1234', undefined)` คือ assert วิธีเรียกซึ่งเป็นสิ่งที่ task นี้เปลี่ยนพอดี · แก้เป็น object เดียว ค่าที่ส่งเข้าไปเหมือนเดิมทุกตัว
+>
+> `grep -rn "api.login" apps/web/src` ไม่เจอผู้เรียกอื่นนอกจากสองหน้าที่แผนระบุ
+
+- [x] **Step 5: รันเทสต์ทั้ง workspace**
 
 ```bash
 pnpm test
 ```
 
-คาดหวัง: 1,211 ผ่าน · `pnpm typecheck` ต้องผ่านด้วย — จุดนี้คือที่ TypeScript จะจับผู้เรียกที่ตกหล่น
+คาดหวัง: 1,211 ผ่าน
 
-- [ ] **Step 6: commit**
+> **ผลจริง 2026-08-17:** 1,210 ผ่าน — off-by-one เดิมจาก Task 6 · shared 413 · print-agent 15 · web-kit 14 · api 407 · office 112 · web 249 · `pnpm typecheck` ต้องผ่านด้วย — จุดนี้คือที่ TypeScript จะจับผู้เรียกที่ตกหล่น
+
+- [x] **Step 6: commit**
 
 ```bash
 git add packages/web-kit apps/web/src apps/office/src

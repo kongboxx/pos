@@ -14,8 +14,11 @@ import type { StoreApi, UseBoundStore } from 'zustand';
 import { toBusinessDate } from '@pos/shared';
 import type { SessionState } from './session-store.js';
 
-export function createUseBusinessToday(
-  useSession: UseBoundStore<StoreApi<SessionState>>,
+// Generic in the credential and blind to it: this hook reads `branch` and
+// nothing else, and pinning it to one app's login shape would make the other
+// app's store fail to typecheck against a hook that never touches a password.
+export function createUseBusinessToday<C>(
+  useSession: UseBoundStore<StoreApi<SessionState<C>>>,
 ): () => string {
   return function useBusinessToday(): string {
     const branch = useSession((state) => state.branch);

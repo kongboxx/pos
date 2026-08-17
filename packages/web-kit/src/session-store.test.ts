@@ -85,3 +85,33 @@ describe('createSessionStore without persistence', () => {
     expect(store.getState().can(Permission.VIEW_PAYROLL)).toBe(false);
   });
 });
+
+describe('credentials the store does not understand', () => {
+  it('hands whatever the app passes straight to that app’s api', async () => {
+    // The store used to insist on (staffId, pin) — a till assumption living in
+    // shared code. It now carries the credential without opening it.
+    const api = apiStub();
+    const store = createSessionStore<{ email: string; password: string }>({ api });
+
+    await store.getState().login({ email: 'noi@example.com', password: 'a-long-password' });
+
+    expect(api.login).toHaveBeenCalledWith({
+      email: 'noi@example.com',
+      password: 'a-long-password',
+    });
+  });
+
+  it('reports the API’s message when the login is refused', async () => {
+    const api = apiStub({
+      me: vi.fn().mockResolvedValue({ ok: false, error: 'no', offline: false }),
+      login: vi.fn().mockResolvedValue({ ok: false, error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' }),
+    });
+    const store = createSessionStore<{ email: string; password: string }>({ api });
+
+    const result = await store.getState().login({ email: 'a@b.co', password: 'x'.repeat(12) });
+
+    expect(result).toEqual({ ok: false, error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
+    // A refused login must not leave the store looking authenticated.
+    expect(store.getState().status).not.toBe('authenticated');
+  });
+});

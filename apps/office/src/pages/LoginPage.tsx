@@ -42,7 +42,7 @@ export function LoginPage(): React.ReactElement {
   const submit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     setError(null);
-    const result = await login(staffId, pin);
+    const result = await login({ staffId, pin });
     if (result.ok) navigate(path.menu, { replace: true });
     else {
       setError(result.error);

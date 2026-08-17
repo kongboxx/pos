@@ -15,25 +15,27 @@ import type { StoreApi, UseBoundStore } from 'zustand';
 import type { Permission } from '@pos/shared';
 import type { SessionState } from './session-store.js';
 
-type SessionHook = UseBoundStore<StoreApi<SessionState>>;
+// Generic in the credential, because a guard reads `status` and `can` and has
+// no business knowing whether the door took a PIN or a password.
+type SessionHook<C> = UseBoundStore<StoreApi<SessionState<C>>>;
 
-export function RequireAuth({
+export function RequireAuth<C>({
   useSession,
   loginPath,
 }: {
-  useSession: SessionHook;
+  useSession: SessionHook<C>;
   loginPath: string;
 }): React.ReactElement {
   const status = useSession((state) => state.status);
   return status === 'authenticated' ? <Outlet /> : <Navigate to={loginPath} replace />;
 }
 
-export function RequirePermission({
+export function RequirePermission<C>({
   useSession,
   permission,
   fallback,
 }: {
-  useSession: SessionHook;
+  useSession: SessionHook<C>;
   permission: Permission;
   fallback: string;
 }): React.ReactElement {

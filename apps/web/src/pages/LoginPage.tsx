@@ -89,7 +89,7 @@ export function LoginPage(): React.ReactElement {
     async (staffId: string, candidate: string) => {
       setBusy(true);
       setError(null);
-      const result = await login(staffId, candidate, branchId);
+      const result = await login({ staffId, pin: candidate, branchId });
       setBusy(false);
       // Always clear: a wrong PIN left on screen is the next person's hint.
       setPin('');
